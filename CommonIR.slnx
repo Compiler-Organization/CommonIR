@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="CommonIR.App/CommonIR.App.csproj" />
+  <Project Path="CommonIR.csproj" />
+</Solution>
