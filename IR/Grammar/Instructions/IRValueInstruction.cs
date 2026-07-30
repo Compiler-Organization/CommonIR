@@ -5,8 +5,11 @@ using System.Text;
 
 namespace CommonIR.IR.Grammar.Instructions
 {
-    public interface IRInstruction : IRGrammar
+    public interface IRValueInstruction
     {
-
+        /// <summary>
+        /// The type of the instruction.
+        /// </summary>
+        IRType Type { get; set; }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CommonIR.IR.Grammar.Instructions;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -7,7 +8,7 @@ namespace CommonIR.IR.Grammar.Objects
     /// <summary>
     /// Defines a global variable at the public scope.
     /// </summary>
-    public class IRGlobal : IRObject
+    public class IRGlobal : IRObject, IRValueInstruction
     {
         /// <summary>
         /// The name of the global. Automatically generated if not defined.

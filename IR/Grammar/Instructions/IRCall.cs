@@ -8,7 +8,7 @@ namespace CommonIR.IR.Grammar.Instructions
     /// <summary>
     /// Makes a call to an existing function with given arguments.
     /// </summary>
-    public class IRCall : IRInstruction
+    public class IRCall : IRInstruction, IRValueInstruction
     {
         /// <summary>
         /// The function being called.

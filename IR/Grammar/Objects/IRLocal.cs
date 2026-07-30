@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CommonIR.IR.Grammar.Instructions;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -7,7 +8,7 @@ namespace CommonIR.IR.Grammar.Objects
     /// <summary>
     /// Defines a local variable inside a scope.
     /// </summary>
-    public class IRLocal : IRObject
+    public class IRLocal : IRObject, IRValueInstruction
     {
         /// <summary>
         /// The name of the local. Automatically generated if nothing is declared.

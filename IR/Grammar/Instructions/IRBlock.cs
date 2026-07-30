@@ -16,7 +16,5 @@ namespace CommonIR.IR.Grammar.Instructions
         /// Instructions in the block.
         /// </summary>
         public List<IRInstruction> Instructions { get; set; } = new List<IRInstruction>();
-
-        public IRType Type { get; set; } = new IRType { DataType = IRDataTypes.Void };
     }
 }

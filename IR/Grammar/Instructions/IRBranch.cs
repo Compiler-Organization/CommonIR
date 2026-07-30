@@ -14,7 +14,5 @@ namespace CommonIR.IR.Grammar.Instructions
         /// The block being branched to.
         /// </summary>
         public required IRBlock Block { get; set; }
-
-        public IRType Type { get; set; } = new IRType { DataType = IRDataTypes.Void };
     }
 }
