@@ -6,6 +6,17 @@ namespace CommonIR
 {
     internal class BinaryWriter : System.IO.BinaryWriter
     {
+        private readonly MemoryStream memoryStream;
+
+        // Public parameterless constructor creates the internal MemoryStream
+        public BinaryWriter() : this(new MemoryStream()) { }
+
+        // Private constructor hooks up the base class and keeps our reference
+        private BinaryWriter(MemoryStream stream) : base(stream)
+        {
+            memoryStream = stream;
+        }
+
         public void WriteULEB128(ulong value)
         {
             do
@@ -19,6 +30,12 @@ namespace CommonIR
                 this.Write(b);
             }
             while (value != 0);
+        }
+
+        public byte[] GetByteArray()
+        {
+            this.Flush();
+            return memoryStream.ToArray();
         }
     }
 }

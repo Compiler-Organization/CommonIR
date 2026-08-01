@@ -6,8 +6,14 @@ namespace CommonIR.Generators.WASM.Model
 {
     internal interface WasmSection
     {
-        public required WasmSectionIDs ID { get; }
+        public WasmSectionIDs ID { get; }
 
         public ulong Size { get; set; }
+
+        /// <summary>
+        /// Converts the section to its binary variant
+        /// </summary>
+        /// <returns></returns>
+        public byte[] Serialize();
     }
 }
