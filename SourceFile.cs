@@ -1,13 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CommonIR
+﻿namespace CommonIR
 {
     public class SourceFile
     {
-        public required string Extension { get; set; }
+        public string Name { get; set; }
 
-        public required byte[] Data { get; set; }
+        public string Extension { get; set; }
+
+        public byte[] Data { get; set; }
+
+        public SourceFile(string name, string extension, byte[] data)
+        {
+            Name = name;
+            Extension = extension;
+            Data = data;
+        }
+
+        public void WriteToDisk()
+        {
+            File.WriteAllBytes($"{Name}{Extension}", Data);
+        }
     }
 }

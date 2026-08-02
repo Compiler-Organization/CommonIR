@@ -1,8 +1,4 @@
-﻿using CommonIR.Errors;
-using CommonIR.IR.Grammar.Objects;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using CommonIR.IR.Grammar.Objects;
 
 namespace CommonIR.IR.Grammar.Instructions
 {
@@ -29,8 +25,6 @@ namespace CommonIR.IR.Grammar.Instructions
             this.Right = right;
 
             this.Type = left.Type;
-
-            throw ErrorHandler.Create($"Left in add instruction of type '{left.GetType().FullName}' is not supported.");
         }
     }
 }

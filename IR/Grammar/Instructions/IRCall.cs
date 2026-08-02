@@ -1,7 +1,4 @@
 ﻿using CommonIR.IR.Grammar.Objects;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CommonIR.IR.Grammar.Instructions
 {
@@ -18,14 +15,21 @@ namespace CommonIR.IR.Grammar.Instructions
         /// <summary>
         /// The arguments being passed to the function call.
         /// </summary>
-        public List<IRGrammar>? Arguments { get; set; }
+        public List<IRValueInstruction> Arguments { get; set; } = new List<IRValueInstruction>();
 
         public IRType Type { get; set; }
 
         public IRCall(IRFunction function)
         {
             this.Function = function;
-            this.Type = function.ReturnType;
+            this.Type = function.ReturnTypes[0]; // TODO: Handle multiple return types
+        }
+
+        public IRCall(IRFunction function, List<IRValueInstruction> arguments)
+        {
+            this.Function = function;
+            this.Arguments = arguments;
+            this.Type = function.ReturnTypes[0]; // TODO: Handle multiple return types
         }
     }
 }

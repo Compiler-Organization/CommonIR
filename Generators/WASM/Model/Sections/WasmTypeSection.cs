@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CommonIR.Generators.WASM.Model.Sections
+﻿namespace CommonIR.Generators.WASM.Model.Sections
 {
     internal class WasmTypeSection : WasmSection
     {
@@ -10,7 +6,7 @@ namespace CommonIR.Generators.WASM.Model.Sections
 
         public ulong Size { get; set; } = 0;
 
-        List<WasmTypeSectionType> Types { get; set; } = new List<WasmTypeSectionType>();
+        public List<WasmTypeSectionType> Types { get; set; } = new List<WasmTypeSectionType>();
 
         public byte[] Serialize()
         {
@@ -25,8 +21,8 @@ namespace CommonIR.Generators.WASM.Model.Sections
                 switch (type.Form)
                 {
                     case WasmForms.Function:
-                        writer.WriteULEB128((ulong)type.Parameters.Count);
-                        foreach (WasmFormTypes parameterType in type.Parameters)
+                        writer.WriteULEB128((ulong)type.ParameterTypes.Count);
+                        foreach (WasmFormTypes parameterType in type.ParameterTypes)
                         {
                             writer.Write((byte)parameterType);
                         }
@@ -78,7 +74,7 @@ namespace CommonIR.Generators.WASM.Model.Sections
         /// <summary>
         /// Type definitions of the parameters
         /// </summary>
-        public List<WasmFormTypes> Parameters { get; set; } = new List<WasmFormTypes>();
+        public List<WasmFormTypes> ParameterTypes { get; set; } = new List<WasmFormTypes>();
 
         /// <summary>
         /// Type definitions of returned values
@@ -126,6 +122,11 @@ namespace CommonIR.Generators.WASM.Model.Sections
 
     internal enum WasmFormTypes
     {
+        /// <summary>
+        /// Nothing (used for empty blocks)
+        /// </summary>
+        Void = 0x40,
+
         /// <summary>
         /// 32-bit integer
         /// </summary>

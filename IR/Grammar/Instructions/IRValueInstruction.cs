@@ -1,11 +1,8 @@
 ﻿using CommonIR.IR.Grammar.Objects;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CommonIR.IR.Grammar.Instructions
 {
-    public interface IRValueInstruction
+    public interface IRValueInstruction : IRInstruction
     {
         /// <summary>
         /// The type of the instruction.

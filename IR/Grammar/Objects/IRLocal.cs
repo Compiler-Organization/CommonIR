@@ -1,7 +1,4 @@
 ﻿using CommonIR.IR.Grammar.Instructions;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CommonIR.IR.Grammar.Objects
 {
@@ -18,11 +15,36 @@ namespace CommonIR.IR.Grammar.Objects
         /// <summary>
         /// The type of the local.
         /// </summary>
-        public required IRType Type { get; set; }
+        public IRType Type { get; set; }
 
         /// <summary>
         /// Determines if the variable can be assigned at any point.
         /// </summary>
-        public bool Mutable { get; set; } = false;
+        public bool IsMutable { get; set; } = false;
+
+        public IRLocal(IRType type, bool isMutable)
+        {
+            Type = type;
+            IsMutable = isMutable;
+        }
+
+        public IRLocal(string name, IRType type, bool isMutable)
+        {
+            Name = name;
+            Type = type;
+            IsMutable = isMutable;
+        }
+
+        public IRLocal(string name, IRDataTypes type, bool isMutable)
+        {
+            Name = name;
+            Type = new IRType(type);
+            IsMutable = isMutable;
+        }
+
+        /// <summary>
+        /// Used internally to determine the location of the local variable.
+        /// </summary>
+        internal ulong Offset { get; set; }
     }
 }

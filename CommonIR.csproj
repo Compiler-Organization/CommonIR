@@ -12,8 +12,4 @@
     <None Remove="CommonIR.App\**" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Generators\WASM\Bindings\" />
-  </ItemGroup>
-
 </Project>

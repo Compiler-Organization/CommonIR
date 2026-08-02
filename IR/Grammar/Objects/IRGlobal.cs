@@ -1,7 +1,4 @@
 ﻿using CommonIR.IR.Grammar.Instructions;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CommonIR.IR.Grammar.Objects
 {
@@ -23,6 +20,11 @@ namespace CommonIR.IR.Grammar.Objects
         /// <summary>
         /// Determines if the variable can be assigned at any point.
         /// </summary>
-        public bool Mutable { get; set; } = false;
+        public bool IsMutable { get; set; } = false;
+
+        /// <summary>
+        /// Used internally to determine the location of the global variable.
+        /// </summary>
+        internal ulong Offset { get; set; }
     }
 }

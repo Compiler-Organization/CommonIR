@@ -1,9 +1,4 @@
-﻿using CommonIR.IR.Grammar.Objects;
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CommonIR.IR.Grammar.Instructions
+﻿namespace CommonIR.IR.Grammar.Instructions
 {
     /// <summary>
     /// Performs a branch to the given block.

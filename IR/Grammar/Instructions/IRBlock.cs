@@ -1,7 +1,4 @@
 ﻿using CommonIR.IR.Grammar.Objects;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CommonIR.IR.Grammar.Instructions
 {
@@ -11,6 +8,11 @@ namespace CommonIR.IR.Grammar.Instructions
         /// The name of the block. Automatically generated if not defined.
         /// </summary>
         public string? Name { get; set; }
+
+        /// <summary>
+        /// The type of the block. If not defined, the block is set to void.
+        /// </summary>
+        public IRType ReturnType { get; set; } = new IRType(IRDataTypes.Void);
 
         /// <summary>
         /// Instructions in the block.

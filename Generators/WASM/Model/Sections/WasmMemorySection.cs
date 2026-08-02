@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CommonIR.Generators.WASM.Model.Sections
+﻿namespace CommonIR.Generators.WASM.Model.Sections
 {
     internal class WasmMemorySection : WasmSection
     {

@@ -2,9 +2,6 @@
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Instructions;
 using CommonIR.IR.Grammar.Objects;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CommonIR.IR
 {
@@ -25,9 +22,16 @@ namespace CommonIR.IR
             this.Block = block;
         }
 
-        private void BuildInstruction(IRInstruction instruction)
+        private IRInstruction InsertInstruction(IRInstruction instruction)
         {
             this.Block.Instructions.Insert(this.Position, instruction);
+            return instruction;
+        }
+
+        private IRValueInstruction InsertInstruction(IRValueInstruction instruction)
+        {
+            // this.Block.Instructions.Insert(this.Position, (IRInstruction)instruction);
+            return instruction;
         }
 
         /// <summary>
@@ -85,7 +89,7 @@ namespace CommonIR.IR
         {
             this.Position = this.Block.Instructions.IndexOf(instruction);
 
-            if(this.Position == -1)
+            if (this.Position == -1)
             {
                 throw ErrorHandler.Create($"This instruction does not exist in the block '{this.Block.Name}'");
             }
@@ -95,9 +99,18 @@ namespace CommonIR.IR
         /// Builds a local in the current block.
         /// </summary>
         /// <param name="local"></param>
-        public void BuildLocal(IRLocal local)
+        public void CreateLocal(IRLocal local)
         {
             this.Function.Locals.Add(local);
+        }
+
+        /// <summary>
+        /// Builds a local in the current block.
+        /// </summary>
+        /// <param name="local"></param>
+        public void CreateLocal(string name, IRType type, bool isMutable)
+        {
+            this.Function.Locals.Add(new IRLocal(name, type, isMutable));
         }
 
         /// <summary>
@@ -105,34 +118,91 @@ namespace CommonIR.IR
         /// </summary>
         /// <param name="condition"></param>
         /// <param name="targetBlock"></param>
-        public void BuildIfBranch(IRGrammar condition, IRBlock targetBlock)
+        public IRInstruction BuildConditionalBranch(IRValueInstruction condition, IRBlock targetBlock)
         {
-            if(condition is IRLocal local)
-            {
-                if(local.Type.DataType != IRDataTypes.Bool)
-                {
-                    throw ErrorHandler.Create($"Local '{local.Name}' of type '{local.Type.DataType.ToString()}' is not allowed in conditional branches.");
-                }
-            }
-
-            if(condition is IRGlobal global)
-            {
-                if (global.Type.DataType != IRDataTypes.Bool)
-                {
-                    throw ErrorHandler.Create($"Local '{global.Name}' of type '{global.Type.DataType.ToString()}' is not allowed in conditional branches.");
-                }
-            }
-
-            BuildInstruction(new IRBranchIf
-            {
-                Condition = condition,
-                Block = targetBlock,
-            });
+            IRInstruction conditionalBranch = new IRConditionalJump(condition, targetBlock);
+            InsertInstruction(conditionalBranch);
+            return conditionalBranch;
         }
 
-        public void BuildAdd(IRGrammar left, IRGrammar right)
+        /// <summary>
+        /// Builds a call instruction depending on if the function being called has a void return type or not.
+        /// </summary>
+        /// <param name="function"></param>
+        /// <param name="arguments"></param>
+        /// <returns></returns>
+        public IRInstruction BuildCall(IRFunction function, List<IRValueInstruction> arguments)
         {
+            if (function.ReturnTypes.Count == 0 || (function.ReturnTypes.Count == 1 && function.ReturnTypes[0].DataType == IRDataTypes.Void))
+            {
+                return InsertInstruction((IRInstruction)new IRCall(function, arguments));
+            }
+            else
+            {
+                return InsertInstruction(new IRCall(function, arguments));
+            }
+        }
 
+        /// <summary>
+        /// Builds a addition instruction that adds two values together.
+        /// </summary>
+        /// <param name="left"></param>
+        /// <param name="right"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildAdd(IRValueInstruction left, IRValueInstruction right)
+        {
+            IRValueInstruction instruction = new IRAdd(left: left, right: right);
+            InsertInstruction(instruction);
+            return instruction;
+        }
+
+        /// <summary>
+        /// Builds a constant integer of a specified integer type.
+        /// </summary>
+        /// <param name="integerType"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildConstantInteger(IRDataTypes integerType, long value)
+        {
+            IRValueInstruction instruction = new IRConstantInteger(integerType: integerType, value: value);
+            InsertInstruction(instruction);
+            return instruction;
+        }
+
+        /// <summary>
+        /// Builds a return instruction with no return value.
+        /// </summary>
+        /// <returns></returns>
+        public IRInstruction BuildReturn()
+        {
+            return new IRReturn();
+        }
+
+        /// <summary>
+        /// Builds a return instruction with a return value.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public IRInstruction BuildReturn(IRValueInstruction value)
+        {
+            IRReturn returnInstruction = new IRReturn
+            {
+                Value = value
+            };
+            InsertInstruction(returnInstruction);
+            return returnInstruction;
+        }
+
+        /// <summary>
+        /// Builds a load to a given target value instruction.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildLoad(IRValueInstruction target)
+        {
+            IRValueInstruction load = new IRLoad(target);
+            InsertInstruction(load);
+            return load;
         }
     }
 }

@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CommonIR.Generators.WASM.Model
+﻿namespace CommonIR.Generators.WASM.Model
 {
-    internal interface WasmSection
+    public interface WasmSection
     {
         public WasmSectionIDs ID { get; }
 

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CommonIR.Generators.WASM.Model.Sections
+﻿namespace CommonIR.Generators.WASM.Model.Sections
 {
     // Note: In Wasm 1.0 MVP, modules were restricted to a maximum of 1 table instance, but Wasm 2.0 allows multiple tables.
     internal class WasmTableSection : WasmSection

@@ -1,7 +1,4 @@
 ﻿using CommonIR.IR.Grammar.Objects;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CommonIR.IR.Grammar.Instructions
 {
@@ -11,7 +8,7 @@ namespace CommonIR.IR.Grammar.Instructions
 
         public IRType Type { get; set; }
 
-        public IRLoad(IRValueInstruction target) 
+        public IRLoad(IRValueInstruction target)
         {
             this.Target = target;
             this.Type = target.Type;

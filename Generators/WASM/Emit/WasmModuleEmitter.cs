@@ -1,8 +1,5 @@
 ﻿using CommonIR.Generators.WASM.Model;
 using CommonIR.IR.Grammar.Objects;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CommonIR.Generators.WASM.Emit
 {
@@ -10,7 +7,10 @@ namespace CommonIR.Generators.WASM.Emit
     {
         public WasmModule Emit(IRModule module)
         {
-
+            return new WasmModule
+            {
+                Sections = new List<WasmSection>()
+            };
         }
     }
 }

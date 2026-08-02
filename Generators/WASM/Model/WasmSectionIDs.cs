@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace CommonIR.Generators.WASM.Model
+﻿namespace CommonIR.Generators.WASM.Model
 {
-    internal enum WasmSectionIDs
+    public enum WasmSectionIDs
     {
         Custom = 0x00,
         Type = 0x01,
