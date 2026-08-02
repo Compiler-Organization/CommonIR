@@ -12,19 +12,6 @@ namespace CommonIR.App
     {
         static void Main(string[] args)
         {
-            //CommonIR.Generators.WASM.WasmGenerator generator = new CommonIR.Generators.WASM.WasmGenerator();
-            //List<SourceFile> sourceFiles = generator.Serialize();
-
-            //foreach(SourceFile sourceFile in sourceFiles)
-            //{
-            //    string filename = $"output{sourceFile.Extension}";
-            //    File.WriteAllBytes(filename, sourceFile.Data);
-            //    Console.WriteLine($"{filename}: {string.Join(" ", sourceFile.Data.Select(t => t.ToString("X2")))}");
-            //    Console.WriteLine($"Wrote {filename} ({sourceFile.Data.Length} bytes)");
-            //}
-
-            //Console.ReadLine();
-
             IRModule module = new IRModule();
 
             IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.Int32, false)]);
