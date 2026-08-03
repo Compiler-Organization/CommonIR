@@ -22,7 +22,7 @@ namespace CommonIR.Generators.WASM.Translation
             {
                 WasmFunctionBody wasmFunctionBody = new WasmFunctionBody()
                 {
-                    Instructions = instructionEmitter.EmitInstructions(function.Instructions),
+                    Instructions = instructionEmitter.EmitInstructions(function.Entryblock.Instructions),
                     Locals = TranslateLocals(function.Locals)
                 };
 

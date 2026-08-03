@@ -18,10 +18,10 @@ namespace CommonIR.Generators.WASM.Emit
                 bytecode.AddRange(EmitInstruction(instruction));
             }
 
-            if (instructions.Last() is not IRReturn)
-            {
-                bytecode.Add((byte)WasmInstructions.End);
-            }
+            //if (instructions.Last() is not IRReturn)
+            //{
+            //    bytecode.Add((byte)WasmInstructions.End);
+            //}
 
             return bytecode;
         }
@@ -60,9 +60,17 @@ namespace CommonIR.Generators.WASM.Emit
         }
 
 
-        public byte[] EmitReturn(IRReturn ret)
+        public byte[] EmitReturn(IRReturn ret) // Note: Complete proper return handling (as WASM requires leftover value(s) on the stack as the return).
         {
+            List<byte> bytes = new List<byte>();
+
+            if(ret.Value != null)
+            {
+                bytes.AddRange(EmitInstruction(ret.Value));
+            }
+
             return [
+                .. bytes, 
                 (byte)WasmInstructions.Return
             ];
         }
@@ -75,8 +83,8 @@ namespace CommonIR.Generators.WASM.Emit
         public byte[] EmitAdd(IRAdd add)
         {
             return [
-                .. EmitInstruction((IRInstruction)add.Left),
-                .. EmitInstruction((IRInstruction)add.Right),
+                .. EmitInstruction(add.Left),
+                .. EmitInstruction(add.Right),
                 (byte)WasmInstructions.I32_add
             ];
         }

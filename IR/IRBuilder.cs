@@ -9,9 +9,15 @@ namespace CommonIR.IR
     {
         private IRModule Module { get; set; }
 
-        private IRFunction Function { get; set; }
+        /// <summary>
+        /// The current function being built
+        /// </summary>
+        public IRFunction Function { get; set; }
 
-        private IRBlock Block { get; set; }
+        /// <summary>
+        /// The current block being built
+        /// </summary>
+        public IRBlock Block { get; set; }
 
         private int Position { get; set; }
 

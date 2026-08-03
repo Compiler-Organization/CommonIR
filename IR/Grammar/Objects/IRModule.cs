@@ -1,4 +1,6 @@
-﻿namespace CommonIR.IR.Grammar.Objects
+﻿using CommonIR.Errors;
+
+namespace CommonIR.IR.Grammar.Objects
 {
     public class IRModule
     {
@@ -61,6 +63,28 @@
             };
             this.Globals.Add(global);
             return global;
+        }
+
+        /// <summary>
+        /// Gets a function declared in the current module. Throws an exception if none was found.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public IRFunction GetFunction(string name)
+        {
+            return this.Functions.FirstOrDefault(f => f.Name == name) ?? throw ErrorHandler.Create($"Function '{name}' not found.");
+        }
+
+        /// <summary>
+        /// Attempts to get a function declared in the current module. Returns true if found, false otherwise.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="function"></param>
+        /// <returns></returns>
+        public bool TryGetFunction(string name, out IRFunction function)
+        {
+            function = Functions.First(f => f.Name == name);
+            return function != null;
         }
     }
 }

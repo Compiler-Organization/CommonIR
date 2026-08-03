@@ -15,14 +15,21 @@ namespace CommonIR.App
             IRModule module = new IRModule();
 
             IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.Int32, false)]);
-            IRFunction function = module.CreateFunction("addAndLog", new IRType(IRDataTypes.Void), [new IRLocal("a", IRDataTypes.Int32, false), new IRLocal("b", IRDataTypes.Int32, false)]);
-            IRBuilder builder = new IRBuilder(module, function, function.Entryblock);
+            IRFunction addFunction = module.CreateFunction("add", new IRType(IRDataTypes.Int32), [new IRLocal("a", IRDataTypes.Int32, false), new IRLocal("b", IRDataTypes.Int32, false)]);
 
-            IRValueInstruction loadParam1 = builder.BuildLoad(function.Parameters[0]);
-            IRValueInstruction loadParam2 = builder.BuildLoad(function.Parameters[1]);
+            IRBuilder builder = new IRBuilder(module, addFunction, addFunction.Entryblock);
+
+            IRValueInstruction loadParam1 = builder.BuildLoad(addFunction.Parameters[0]);
+            IRValueInstruction loadParam2 = builder.BuildLoad(addFunction.Parameters[1]);
 
             IRValueInstruction addResult = builder.BuildAdd(loadParam1, loadParam2);
-            builder.BuildCall(consoleLogImport, [addResult]);
+            builder.BuildReturn(addResult);
+
+            IRFunction printFunction = module.CreateFunction("print", new IRType(IRDataTypes.Void), [new IRLocal("a", IRDataTypes.Int32, false)]);
+            builder.PositionAtStart(printFunction, printFunction.Entryblock);
+
+            IRValueInstruction loadParame1 = builder.BuildLoad(printFunction.Parameters[0]);
+            builder.BuildCall(consoleLogImport, [loadParame1]);
             builder.BuildReturn();
 
             WasmGenerator wasmGenerator = new WasmGenerator(module);
