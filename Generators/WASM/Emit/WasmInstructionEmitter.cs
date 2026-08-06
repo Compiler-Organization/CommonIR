@@ -5,6 +5,7 @@ using CommonIR.Generators.WASM.Translation;
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Instructions;
 using CommonIR.IR.Grammar.Objects;
+using System.Diagnostics;
 
 namespace CommonIR.Generators.WASM.Emit
 {
@@ -40,7 +41,7 @@ namespace CommonIR.Generators.WASM.Emit
                 IRReturn ret => EmitReturn(ret),
                 IRLoad load => EmitLoad(load),
                 IRCompare compare => EmitCompare(compare),
-                IRConditionalBlock conditionalBlock => EmitConditionalBlock(conditionalBlock),
+                IRConditionalBranch conditionalBranch => EmitConditionalBranch(conditionalBranch),
 
                 _ => throw new NotImplementedException($"No Wasm translation implemented for instruction '{instruction.GetType().Name}'")
             };
@@ -187,17 +188,39 @@ namespace CommonIR.Generators.WASM.Emit
             return bytes.ToArray();
         }
 
-        public byte[] EmitConditionalBlock(IRConditionalBlock conditionalBlock)
-        {
-            List<byte> bytes = [
-                (byte)WasmInstructions.Block,
-                (byte)WasmTypeTranslator.TranslateIRType(conditionalBlock.ReturnType)
-            ];
+        //public byte[] EmitConditionalBlock(IRConditionalBlock conditionalBlock)
+        //{
+        //    List<byte> bytes = [
+        //        (byte)WasmInstructions.Block,
+        //        (byte)WasmTypeTranslator.TranslateIRType(conditionalBlock.ReturnType)
+        //    ];
 
-            bytes.AddRange(EmitInstruction(conditionalBlock.Condition));
-            bytes.Add((byte)WasmInstructions.I32_eqz);
-            bytes.AddRange([(byte)WasmInstructions.Br_if, 0x00]);
-            bytes.AddRange(EmitInstructions(conditionalBlock.Instructions));
+        //    bytes.AddRange(EmitInstruction(conditionalBlock.Condition));
+        //    bytes.Add((byte)WasmInstructions.I32_eqz);
+        //    bytes.AddRange([(byte)WasmInstructions.Br_if, 0x00]);
+        //    bytes.AddRange(EmitInstructions(conditionalBlock.Instructions));
+
+        //    bytes.Add((byte)WasmInstructions.End);
+
+        //    return bytes.ToArray();
+        //}
+
+        public byte[] EmitConditionalBranch(IRConditionalBranch conditionalBranch)
+        {
+            List<byte> bytes = [];
+
+            bytes.AddRange([
+                .. EmitInstruction(conditionalBranch.Condition),
+                (byte)WasmInstructions.If,
+                (byte)WasmTypeTranslator.TranslateIRType(conditionalBranch.ThenBlock.ReturnType),
+                .. EmitInstructions(conditionalBranch.ThenBlock.Instructions),
+            ]);
+
+            if (conditionalBranch.HasElseBlock)
+            {
+                bytes.Add((byte)WasmInstructions.Else);
+                bytes.AddRange(EmitInstructions(conditionalBranch.ElseBlock.Instructions));
+            }
 
             bytes.Add((byte)WasmInstructions.End);
 

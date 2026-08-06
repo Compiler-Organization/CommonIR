@@ -16,8 +16,11 @@ namespace CommonIR.IR.Grammar.Objects
 
         public IRGrammar? Parent { get; set; }
 
-        public IRModule()
+        public string Name { get; set; }
+
+        public IRModule(string name)
         {
+            this.Name = name;
             this.Globals = new List<IRGlobal>();
             this.Functions = new List<IRFunction>();
             this.FunctionImports = new List<IRFunctionImport>();

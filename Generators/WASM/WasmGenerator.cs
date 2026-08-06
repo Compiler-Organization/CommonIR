@@ -25,8 +25,8 @@ namespace CommonIR.Generators.WASM
             WasmJSBindingsGenerator bindingsGenerator = new WasmJSBindingsGenerator(Module);
 
             return [
-                new SourceFile("wasm_module", ".wasm", wasmModule.Serialize()),
-                new SourceFile("wasm_bindings", ".js", Encoding.UTF8.GetBytes(bindingsGenerator.CreateBindings())),
+                new SourceFile($"{this.Module.Name}_module", ".wasm", wasmModule.Serialize()),
+                new SourceFile($"{this.Module.Name}_bindings", ".js", Encoding.UTF8.GetBytes(bindingsGenerator.CreateBindings())),
                 ];
         }
     }

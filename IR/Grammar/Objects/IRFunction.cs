@@ -26,6 +26,11 @@ namespace CommonIR.IR.Grammar.Objects
         public List<IRLocal> Locals { get; set; } = new List<IRLocal>();
 
         /// <summary>
+        /// Blocks readily available in the function.
+        /// </summary>
+        public List<IRBlock> Blocks { get; set; } = new List<IRBlock>();
+
+        /// <summary>
         /// Default entry block appended to the start of the function when initialized.
         /// Function always starts here.
         /// </summary>
@@ -71,6 +76,18 @@ namespace CommonIR.IR.Grammar.Objects
             local.Offset = (ulong)(Locals.Count + Parameters.Count);
             Locals.Add(local);
             return local;
+        }
+
+        /// <summary>
+        /// Creates a block and adds it to the functions block pool.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public IRBlock CreateBlock(string name)
+        {
+            IRBlock block = new IRBlock(name);
+            this.Blocks.Add(block);
+            return block;
         }
 
         public bool HasReturn()

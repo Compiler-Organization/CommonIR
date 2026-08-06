@@ -6,6 +6,7 @@ using CommonIR.IR;
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Instructions;
 using CommonIR.IR.Grammar.Objects;
+using System.Text;
 
 namespace CommonIR.App
 {
@@ -13,7 +14,7 @@ namespace CommonIR.App
     {
         static void Main(string[] args)
         {
-            IRModule module = new IRModule();
+            IRModule module = new IRModule("test");
             IRGlobal testGlobal = module.CreateGlobal("testVal", new IRType(IRDataTypes.Int32), new IRConstantInteger(IRDataTypes.Int32, 43), false);
             IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.Int32, false)]);
 
@@ -30,18 +31,17 @@ namespace CommonIR.App
                 constantValue1,
                 constantValue2
             );
+            IRBlock thenBlock = testFunction.CreateBlock("if.then");
+            IRBlock elseBlock = testFunction.CreateBlock("if.else");
+            IRVoidInstruction condBr = builder.BuildConditionalBranch(comparison, thenBlock, elseBlock);
 
-            IRConditionalBlock trueBranchBlock = (IRConditionalBlock)builder.BuildConditionalBlock("TargetSuccessBlock", comparison);
-
-            builder.PositionAtStart(testFunction, trueBranchBlock);
+            builder.PositionAtStart(testFunction, thenBlock);
             IRValueInstruction successMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 100);
             builder.BuildCall(consoleLogImport, [successMarker]);
-            builder.BuildReturn();
 
-            builder.PositionAtEnd(testFunction, testFunction.Entryblock);
+            builder.PositionAtStart(testFunction, elseBlock);
             IRValueInstruction failMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 273);
             builder.BuildCall(consoleLogImport, [failMarker]);
-            builder.BuildReturn();
 
 
             CommonIRCodeGeneratorSettings codeGenSettings = new CommonIRCodeGeneratorSettings
@@ -55,7 +55,14 @@ namespace CommonIR.App
             foreach (SourceFile sourceFile in codeGen.GenerateSourceFiles(module))
             {
                 string filename = $"{sourceFile.Name}{sourceFile.Extension}";
-                Console.WriteLine($"{filename} ({sourceFile.Data.Length} bytes): 0x{string.Join(", 0x", sourceFile.Data.Select(t => t.ToString("X2")))}");
+                if(sourceFile.Extension == ".wasm")
+                {
+                    Console.WriteLine($"{filename} ({sourceFile.Data.Length} bytes): 0x{string.Join(", 0x", sourceFile.Data.Select(t => t.ToString("X2")))}");
+                }
+                else
+                {
+                    Console.WriteLine($"{filename} ({sourceFile.Data.Length} bytes): {Encoding.UTF8.GetString(sourceFile.Data)}");
+                }
                 Console.WriteLine();
                 sourceFile.WriteToDisk();
             }

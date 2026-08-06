@@ -202,28 +202,31 @@ namespace CommonIR.IR
         }
 
         /// <summary>
-        /// Builds a new code block.
+        /// Inserts a condiitonal branch which executes the thenBlock if the condition is met, else executes the elseBlock.
         /// </summary>
-        /// <param name="name"></param>
+        /// <param name="condition"></param>
+        /// <param name="thenBlock"></param>
+        /// <param name="elseBlock"></param>
         /// <returns></returns>
-        public IRInstruction BuildBlock(string name)
+        public IRVoidInstruction BuildConditionalBranch(IRValueInstruction condition, IRBlock thenBlock, IRBlock elseBlock)
         {
-            IRInstruction block = new IRBlock(name);
-            InsertInstruction(block);
-            return block;
+            IRVoidInstruction conditionalBranch = new IRConditionalBranch(condition, thenBlock, elseBlock);
+            InsertVoidInstruction(conditionalBranch);
+            return conditionalBranch;
         }
 
         /// <summary>
-        /// Builds a new code block which is executed if the condition is equals true.
+        /// Inserts a condiitonal branch which executes the thenBlock if the condition is met.
         /// </summary>
-        /// <param name="name"></param>
         /// <param name="condition"></param>
+        /// <param name="thenBlock"></param>
+        /// <param name="elseBlock"></param>
         /// <returns></returns>
-        public IRInstruction BuildConditionalBlock(string name, IRValueInstruction condition)
+        public IRVoidInstruction BuildConditionalBranch(IRValueInstruction condition, IRBlock thenBlock)
         {
-            IRInstruction conditionalBlock = new IRConditionalBlock(name, condition);
-            InsertInstruction(conditionalBlock);
-            return conditionalBlock;
+            IRVoidInstruction conditionalBranch = new IRConditionalBranch(condition, thenBlock);
+            InsertVoidInstruction(conditionalBranch);
+            return conditionalBranch;
         }
 
         /// <summary>
