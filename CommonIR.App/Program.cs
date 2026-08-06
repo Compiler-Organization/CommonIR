@@ -13,31 +13,43 @@ namespace CommonIR.App
         static void Main(string[] args)
         {
             IRModule module = new IRModule();
-
+            IRGlobal testGlobal = module.CreateGlobal("testVal", new IRType(IRDataTypes.Int32), new IRConstantInteger(IRDataTypes.Int32, 43), false);
             IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.Int32, false)]);
-            IRFunction addFunction = module.CreateFunction("add", new IRType(IRDataTypes.Int32), [new IRLocal("a", IRDataTypes.Int32, false), new IRLocal("b", IRDataTypes.Int32, false)]);
 
-            IRBuilder builder = new IRBuilder(module, addFunction, addFunction.Entryblock);
 
-            IRValueInstruction loadParam1 = builder.BuildLoad(addFunction.Parameters[0]);
-            IRValueInstruction loadParam2 = builder.BuildLoad(addFunction.Parameters[1]);
+            IRFunction testFunction = module.CreateFunction("test_conditional", [new IRType(IRDataTypes.Void)], [new IRLocal("para1", IRDataTypes.Int32, false)]);
+            IRBuilder builder = new IRBuilder(module, testFunction, testFunction.Entryblock);
+            builder.PositionAtStart(testFunction, testFunction.Entryblock);
 
-            IRValueInstruction addResult = builder.BuildAdd(loadParam1, loadParam2);
-            builder.BuildReturn(addResult);
+            IRValueInstruction constantValue1 = builder.BuildLoad(testFunction.Parameters[0]);
+            IRValueInstruction constantValue2 = builder.BuildConstantInteger(IRDataTypes.Int32, 47);
 
-            IRFunction printFunction = module.CreateFunction("print", new IRType(IRDataTypes.Void), [new IRLocal("a", IRDataTypes.Int32, false)]);
-            builder.PositionAtStart(printFunction, printFunction.Entryblock);
+            IRValueInstruction comparison = builder.BuildCompare(
+                IRComparisonOperator.GreaterThan,
+                constantValue1,
+                constantValue2
+            );
 
-            IRValueInstruction loadParame1 = builder.BuildLoad(printFunction.Parameters[0]);
-            builder.BuildCall(consoleLogImport, [loadParame1]);
+            IRConditionalBlock trueBranchBlock = (IRConditionalBlock)builder.BuildConditionalBlock("TargetSuccessBlock", comparison);
+
+            builder.PositionAtStart(testFunction, trueBranchBlock);
+            IRValueInstruction successMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 100);
+            builder.BuildCall(consoleLogImport, [successMarker]);
+            builder.BuildReturn();
+
+            builder.PositionAtEnd(testFunction, testFunction.Entryblock);
+            IRValueInstruction failMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 273);
+            builder.BuildCall(consoleLogImport, [failMarker]);
             builder.BuildReturn();
 
             WasmGenerator wasmGenerator = new WasmGenerator(module);
 
+            Console.WriteLine(module.Dump());
+
             foreach (SourceFile sourceFile in wasmGenerator.GenerateSourceFiles())
             {
                 string filename = $"{sourceFile.Name}{sourceFile.Extension}";
-                Console.WriteLine($"{filename} ({sourceFile.Data.Length} bytes): {string.Join(" ", sourceFile.Data.Select(t => t.ToString("X2")))}");
+                Console.WriteLine($"{filename} ({sourceFile.Data.Length} bytes): 0x{string.Join(", 0x", sourceFile.Data.Select(t => t.ToString("X2")))}");
                 Console.WriteLine();
                 sourceFile.WriteToDisk();
             }

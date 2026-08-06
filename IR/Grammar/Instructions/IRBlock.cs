@@ -2,21 +2,24 @@
 
 namespace CommonIR.IR.Grammar.Instructions
 {
-    public class IRBlock : IRInstruction
+    public class IRBlock : IRCodeBlock, IRVoidInstruction
     {
-        /// <summary>
-        /// The name of the block. Automatically generated if not defined.
-        /// </summary>
-        public string? Name { get; set; }
+        public IRBlock(string name) 
+        {
+            this.Name = name;
+        }
 
-        /// <summary>
-        /// The type of the block. If not defined, the block is set to void.
-        /// </summary>
-        public IRType ReturnType { get; set; } = new IRType(IRDataTypes.Void);
+        public IRBlock(string name, List<IRInstruction> instructions) 
+        { 
+            this.Name = name;
+            this.Instructions = instructions;
+        }
 
-        /// <summary>
-        /// Instructions in the block.
-        /// </summary>
-        public List<IRInstruction> Instructions { get; set; } = new List<IRInstruction>();
+        public IRBlock(string name, List<IRInstruction> instructions, IRType returnType) 
+        {
+            this.Name = name;
+            this.Instructions = instructions;
+            this.ReturnType = returnType;
+        }
     }
 }

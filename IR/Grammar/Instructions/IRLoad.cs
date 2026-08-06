@@ -2,16 +2,28 @@
 
 namespace CommonIR.IR.Grammar.Instructions
 {
-    public class IRLoad : IRInstruction, IRValueInstruction
+    public class IRLoad : IRValueInstruction
     {
+        public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
+        public bool IsVoid { get; } = false;
+
+        public IRGrammar? Parent { get; set; }
+
         public IRValueInstruction Target { get; set; }
 
-        public IRType Type { get; set; }
+        public IRType ValueType { get; set; }
 
         public IRLoad(IRValueInstruction target)
         {
             this.Target = target;
-            this.Type = target.Type;
+            this.ValueType = target.ValueType;
+
+            target.References.Add(this);
+        }
+
+        public string Dump()
+        {
+            return $"load ({this.Target.Dump()})";
         }
     }
 }

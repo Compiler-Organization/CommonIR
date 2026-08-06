@@ -2,7 +2,7 @@
 {
     internal class BinaryWriter : System.IO.BinaryWriter
     {
-        private readonly MemoryStream memoryStream;
+        private MemoryStream memoryStream;
 
         // Public parameterless constructor creates the internal MemoryStream
         public BinaryWriter() : this(new MemoryStream()) { }

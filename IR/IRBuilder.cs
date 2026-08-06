@@ -12,16 +12,23 @@ namespace CommonIR.IR
         /// <summary>
         /// The current function being built
         /// </summary>
-        public IRFunction Function { get; set; }
+        public IRFunction? Function { get; set; }
 
         /// <summary>
         /// The current block being built
         /// </summary>
-        public IRBlock Block { get; set; }
+        public IRCodeBlock? Block { get; set; }
 
         private int Position { get; set; }
 
-        public IRBuilder(IRModule module, IRFunction function, IRBlock block)
+        public IRBuilder(IRModule module)
+        {
+            this.Module = module;
+            this.Function = null;
+            this.Block = null;
+        }
+
+        public IRBuilder(IRModule module, IRFunction function, IRCodeBlock block)
         {
             this.Module = module;
             this.Function = function;
@@ -30,13 +37,27 @@ namespace CommonIR.IR
 
         private IRInstruction InsertInstruction(IRInstruction instruction)
         {
-            this.Block.Instructions.Insert(this.Position, instruction);
+            if(this.Block == null)
+            {
+                throw ErrorHandler.Create("No block has been set in the IR builder!");
+            }
+
+            instruction.Parent = this.Block;
+
+            this.Block.Instructions.Insert(this.Position++, instruction);
             return instruction;
         }
 
-        private IRValueInstruction InsertInstruction(IRValueInstruction instruction)
+        private IRVoidInstruction InsertVoidInstruction(IRVoidInstruction instruction)
         {
-            // this.Block.Instructions.Insert(this.Position, (IRInstruction)instruction);
+            if (this.Block == null)
+            {
+                throw ErrorHandler.Create("No block has been set in the IR builder!");
+            }
+
+            instruction.Parent = this.Block;
+
+            this.Block.Instructions.Insert(this.Position++, instruction);
             return instruction;
         }
 
@@ -52,7 +73,7 @@ namespace CommonIR.IR
         /// Positions the IR builder at the start of a given block.
         /// </summary>
         /// <param name="block"></param>
-        public void PositionAtStart(IRFunction function, IRBlock block)
+        public void PositionAtStart(IRFunction function, IRCodeBlock block)
         {
             this.Function = function;
             this.Block = block;
@@ -64,6 +85,11 @@ namespace CommonIR.IR
         /// </summary>
         public void PositionAtEnd()
         {
+            if (this.Block == null)
+            {
+                throw ErrorHandler.Create("No block has been set in the IR builder!");
+            }
+
             this.Position = this.Block.Instructions.Count;
         }
 
@@ -71,7 +97,7 @@ namespace CommonIR.IR
         /// Positions the IR builder at the end of a given block.
         /// </summary>
         /// <param name="block"></param>
-        public void PositionAtEnd(IRFunction function, IRBlock block)
+        public void PositionAtEnd(IRFunction function, IRCodeBlock block)
         {
             this.Function = function;
             this.Block = block;
@@ -93,42 +119,17 @@ namespace CommonIR.IR
         /// <param name="instruction"></param>
         public void PositionAtInstruction(IRInstruction instruction)
         {
+            if (this.Block == null)
+            {
+                throw ErrorHandler.Create("No block has been set in the IR builder!");
+            }
+
             this.Position = this.Block.Instructions.IndexOf(instruction);
 
             if (this.Position == -1)
             {
                 throw ErrorHandler.Create($"This instruction does not exist in the block '{this.Block.Name}'");
             }
-        }
-
-        /// <summary>
-        /// Builds a local in the current block.
-        /// </summary>
-        /// <param name="local"></param>
-        public void CreateLocal(IRLocal local)
-        {
-            this.Function.Locals.Add(local);
-        }
-
-        /// <summary>
-        /// Builds a local in the current block.
-        /// </summary>
-        /// <param name="local"></param>
-        public void CreateLocal(string name, IRType type, bool isMutable)
-        {
-            this.Function.Locals.Add(new IRLocal(name, type, isMutable));
-        }
-
-        /// <summary>
-        /// Builds a conditional branch that moves to the given block if the condition is met.
-        /// </summary>
-        /// <param name="condition"></param>
-        /// <param name="targetBlock"></param>
-        public IRInstruction BuildConditionalBranch(IRValueInstruction condition, IRBlock targetBlock)
-        {
-            IRInstruction conditionalBranch = new IRConditionalJump(condition, targetBlock);
-            InsertInstruction(conditionalBranch);
-            return conditionalBranch;
         }
 
         /// <summary>
@@ -139,14 +140,7 @@ namespace CommonIR.IR
         /// <returns></returns>
         public IRInstruction BuildCall(IRFunction function, List<IRValueInstruction> arguments)
         {
-            if (function.ReturnTypes.Count == 0 || (function.ReturnTypes.Count == 1 && function.ReturnTypes[0].DataType == IRDataTypes.Void))
-            {
-                return InsertInstruction((IRInstruction)new IRCall(function, arguments));
-            }
-            else
-            {
-                return InsertInstruction(new IRCall(function, arguments));
-            }
+            return InsertInstruction(new IRCall(function, arguments));
         }
 
         /// <summary>
@@ -158,7 +152,6 @@ namespace CommonIR.IR
         public IRValueInstruction BuildAdd(IRValueInstruction left, IRValueInstruction right)
         {
             IRValueInstruction instruction = new IRAdd(left: left, right: right);
-            InsertInstruction(instruction);
             return instruction;
         }
 
@@ -171,7 +164,6 @@ namespace CommonIR.IR
         public IRValueInstruction BuildConstantInteger(IRDataTypes integerType, long value)
         {
             IRValueInstruction instruction = new IRConstantInteger(integerType: integerType, value: value);
-            InsertInstruction(instruction);
             return instruction;
         }
 
@@ -179,9 +171,11 @@ namespace CommonIR.IR
         /// Builds a return instruction with no return value.
         /// </summary>
         /// <returns></returns>
-        public IRInstruction BuildReturn()
+        public IRVoidInstruction BuildReturn()
         {
-            return new IRReturn();
+            IRReturn returnInstruction = new IRReturn();
+            InsertVoidInstruction(returnInstruction);
+            return returnInstruction;
         }
 
         /// <summary>
@@ -189,13 +183,10 @@ namespace CommonIR.IR
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
-        public IRInstruction BuildReturn(IRValueInstruction value)
+        public IRVoidInstruction BuildReturn(IRValueInstruction value)
         {
-            IRReturn returnInstruction = new IRReturn
-            {
-                Value = value
-            };
-            InsertInstruction(returnInstruction);
+            IRReturn returnInstruction = new IRReturn(value);
+            InsertVoidInstruction(returnInstruction);
             return returnInstruction;
         }
 
@@ -207,8 +198,45 @@ namespace CommonIR.IR
         public IRValueInstruction BuildLoad(IRValueInstruction target)
         {
             IRValueInstruction load = new IRLoad(target);
-            InsertInstruction(load);
             return load;
+        }
+
+        /// <summary>
+        /// Builds a new code block.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public IRInstruction BuildBlock(string name)
+        {
+            IRInstruction block = new IRBlock(name);
+            InsertInstruction(block);
+            return block;
+        }
+
+        /// <summary>
+        /// Builds a new code block which is executed if the condition is equals true.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="condition"></param>
+        /// <returns></returns>
+        public IRInstruction BuildConditionalBlock(string name, IRValueInstruction condition)
+        {
+            IRInstruction conditionalBlock = new IRConditionalBlock(name, condition);
+            InsertInstruction(conditionalBlock);
+            return conditionalBlock;
+        }
+
+        /// <summary>
+        /// Builds a comparsion between two values given the operator.
+        /// </summary>
+        /// <param name="comparisonOperator"></param>
+        /// <param name="left"></param>
+        /// <param name="right"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildCompare(IRComparisonOperator comparisonOperator, IRValueInstruction left, IRValueInstruction right)
+        {
+            IRValueInstruction compare = new IRCompare(comparisonOperator, left, right);
+            return compare;
         }
     }
 }

@@ -18,24 +18,44 @@
         Bool,
 
         /// <summary>
-        /// One byte integer scalar.
+        /// One byte signed integer scalar.
         /// </summary>
         Int8,
 
         /// <summary>
-        /// Two byte integer scalar.
+        /// One byte unsigned integer scalar.
+        /// </summary>
+        UInt8,
+
+        /// <summary>
+        /// Two byte signed integer scalar.
         /// </summary>
         Int16,
 
         /// <summary>
-        /// Four byte integer scalar.
+        /// Two byte unsigned integer scalar.
+        /// </summary>
+        UInt16,
+
+        /// <summary>
+        /// Four-byte signed integer scalar.
         /// </summary>
         Int32,
 
         /// <summary>
-        /// Eight byte integer scalar.
+        /// Four-byte unsigned integer scalar.
+        /// </summary>
+        UInt32,
+
+        /// <summary>
+        /// Eight byte signed integer scalar.
         /// </summary>
         Int64,
+
+        /// <summary>
+        /// Eight byte unsigned integer scalar.
+        /// </summary>
+        UInt64,
 
         /// <summary>
         /// Four byte floating point scalar.

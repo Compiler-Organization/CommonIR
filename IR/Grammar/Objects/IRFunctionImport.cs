@@ -11,5 +11,10 @@
         {
             Module = module;
         }
+
+        public new string Dump()
+        {
+            return $"import module \"{this.Module}\" function \"{this.Name}({string.Join(", ", Parameters.Select(p => p.Dump()))}) : ({string.Join(", ", ReturnTypes.Select(r => r.Dump()))})\"";
+        }
     }
 }

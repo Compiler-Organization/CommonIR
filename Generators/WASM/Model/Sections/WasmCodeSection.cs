@@ -10,6 +10,11 @@
 
         public byte[] Serialize()
         {
+            if(this.Functions.Count == 0)
+            {
+                return [];
+            }
+
             using BinaryWriter writer = new BinaryWriter();
 
             writer.WriteULEB128((ulong)this.Functions.Count);

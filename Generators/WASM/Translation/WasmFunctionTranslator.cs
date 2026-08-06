@@ -1,4 +1,5 @@
 ﻿using CommonIR.Generators.WASM.Emit;
+using CommonIR.Generators.WASM.Model;
 using CommonIR.Generators.WASM.Model.Sections;
 using CommonIR.IR.Grammar.Objects;
 
@@ -20,9 +21,13 @@ namespace CommonIR.Generators.WASM.Translation
 
             foreach (IRFunction function in Module.Functions)
             {
+                List<byte> bodyBytes = instructionEmitter.EmitInstructions(function.Entryblock.Instructions);
+
+                bodyBytes.Add((byte)WasmInstructions.End);
+
                 WasmFunctionBody wasmFunctionBody = new WasmFunctionBody()
                 {
-                    Instructions = instructionEmitter.EmitInstructions(function.Entryblock.Instructions),
+                    Instructions = [.. bodyBytes],
                     Locals = TranslateLocals(function.Locals)
                 };
 
@@ -41,13 +46,13 @@ namespace CommonIR.Generators.WASM.Translation
             return locals
                 .Select((local, index) => new
                 {
-                    Type = WasmTypeTranslator.TranslateIRDataType(local.Type.DataType),
+                    Type = WasmTypeTranslator.TranslateIRDataType(local.ValueType.DataType),
                     Index = index
                 })
                 .Select((item, index) => new
                 {
                     item.Type,
-                    GroupKey = (index > 0 && item.Type != WasmTypeTranslator.TranslateIRDataType(locals[index - 1].Type.DataType))
+                    GroupKey = (index > 0 && item.Type != WasmTypeTranslator.TranslateIRDataType(locals[index - 1].ValueType.DataType))
                         ? ++groupIndex
                         : groupIndex
                 })

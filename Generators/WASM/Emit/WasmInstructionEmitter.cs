@@ -1,5 +1,8 @@
-﻿using CommonIR.Generators.WASM.Model;
+﻿using CommonIR.Errors;
+using CommonIR.Generators.WASM.Model;
+using CommonIR.Generators.WASM.Model.Sections;
 using CommonIR.Generators.WASM.Translation;
+using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Instructions;
 using CommonIR.IR.Grammar.Objects;
 
@@ -34,19 +37,81 @@ namespace CommonIR.Generators.WASM.Emit
                 IRAdd add => EmitAdd(add),
                 IRCall call => EmitCall(call),
                 IRBlock block => EmitBlock(block),
-                IRJump jump => EmitJump(jump),
                 IRReturn ret => EmitReturn(ret),
                 IRLoad load => EmitLoad(load),
+                IRCompare compare => EmitCompare(compare),
+                IRConditionalBlock conditionalBlock => EmitConditionalBlock(conditionalBlock),
 
                 _ => throw new NotImplementedException($"No Wasm translation implemented for instruction '{instruction.GetType().Name}'")
             };
         }
 
+        public byte[] EmitCompare(IRCompare compare)
+        {
+            WasmInstructions comparisonInstruction = (compare.ValueType.DataType, compare.Operator) switch
+            {
+                (IRDataTypes.Int32, IRComparisonOperator.EqualTo) => WasmInstructions.I32_eq,
+                (IRDataTypes.Int32, IRComparisonOperator.NotEqualTo) => WasmInstructions.I32_ne,
+                (IRDataTypes.Int32, IRComparisonOperator.LessThan) => WasmInstructions.I32_lt_s,
+                (IRDataTypes.Int32, IRComparisonOperator.GreaterThan) => WasmInstructions.I32_gt_s,
+                (IRDataTypes.Int32, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I32_le_s,
+                (IRDataTypes.Int32, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I32_ge_s,
+
+                (IRDataTypes.UInt32, IRComparisonOperator.EqualTo) => WasmInstructions.I32_eq,
+                (IRDataTypes.UInt32, IRComparisonOperator.NotEqualTo) => WasmInstructions.I32_ne,
+                (IRDataTypes.UInt32, IRComparisonOperator.LessThan) => WasmInstructions.I32_lt_u,
+                (IRDataTypes.UInt32, IRComparisonOperator.GreaterThan) => WasmInstructions.I32_gt_u,
+                (IRDataTypes.UInt32, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I32_le_u,
+                (IRDataTypes.UInt32, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I32_ge_u,
+
+                (IRDataTypes.Int64, IRComparisonOperator.EqualTo) => WasmInstructions.I64_eq,
+                (IRDataTypes.Int64, IRComparisonOperator.NotEqualTo) => WasmInstructions.I64_ne,
+                (IRDataTypes.Int64, IRComparisonOperator.LessThan) => WasmInstructions.I64_lt_s,
+                (IRDataTypes.Int64, IRComparisonOperator.GreaterThan) => WasmInstructions.I64_gt_s,
+                (IRDataTypes.Int64, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I64_le_s,
+                (IRDataTypes.Int64, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I64_ge_s,
+
+                (IRDataTypes.UInt64, IRComparisonOperator.EqualTo) => WasmInstructions.I64_eq,
+                (IRDataTypes.UInt64, IRComparisonOperator.NotEqualTo) => WasmInstructions.I64_ne,
+                (IRDataTypes.UInt64, IRComparisonOperator.LessThan) => WasmInstructions.I64_lt_u,
+                (IRDataTypes.UInt64, IRComparisonOperator.GreaterThan) => WasmInstructions.I64_gt_u,
+                (IRDataTypes.UInt64, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I64_le_u,
+                (IRDataTypes.UInt64, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I64_ge_u,
+
+                (IRDataTypes.Float32, IRComparisonOperator.EqualTo) => WasmInstructions.F32_eq,
+                (IRDataTypes.Float32, IRComparisonOperator.NotEqualTo) => WasmInstructions.F32_ne,
+                (IRDataTypes.Float32, IRComparisonOperator.LessThan) => WasmInstructions.F32_lt,
+                (IRDataTypes.Float32, IRComparisonOperator.GreaterThan) => WasmInstructions.F32_gt,
+                (IRDataTypes.Float32, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.F32_le,
+                (IRDataTypes.Float32, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.F32_ge,
+
+                (IRDataTypes.Float64, IRComparisonOperator.EqualTo) => WasmInstructions.F64_eq,
+                (IRDataTypes.Float64, IRComparisonOperator.NotEqualTo) => WasmInstructions.F64_ne,
+                (IRDataTypes.Float64, IRComparisonOperator.LessThan) => WasmInstructions.F64_lt,
+                (IRDataTypes.Float64, IRComparisonOperator.GreaterThan) => WasmInstructions.F64_gt,
+                (IRDataTypes.Float64, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.F64_le,
+                (IRDataTypes.Float64, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.F64_ge,
+
+                _ => throw ErrorHandler.CreateNotImplimented($"Instruction '{compare.Operator}' for type '{compare.ValueType.DataType}' is not yet implemented.")
+            };
+
+            return [
+                .. EmitInstruction(compare.Left),
+                .. EmitInstruction(compare.Right),
+                (byte)comparisonInstruction,
+            ];
+        }
+
         public byte[] EmitLoad(IRLoad load)
         {
-            List<byte> bytecode = [
-                (byte)WasmInstructions.Local_get
-            ];
+            List<byte> bytecode = [];
+
+            bytecode.Add(load.Target switch
+            {
+                IRLocal => (byte)WasmInstructions.Local_get,
+                IRGlobal => (byte)WasmInstructions.Global_get,
+                _ => throw ErrorHandler.Create($"Cannot load value from a \"{load.Target}\"")
+            });
 
             bytecode.AddRange(load.Target switch
             {
@@ -76,9 +141,17 @@ namespace CommonIR.Generators.WASM.Emit
         }
 
         public byte[] EmitConstant(IRConstantInteger constInt)
-            => [
-                   (byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned(constInt.Value)
-               ];
+        {
+            return [constInt.IntegerType switch 
+            {
+                IRDataTypes.Int32 => (byte)WasmInstructions.I32_const,
+                IRDataTypes.Int64 => (byte)WasmInstructions.I64_const,
+                IRDataTypes.Float32 => (byte)WasmInstructions.F32_const,
+                IRDataTypes.Float64 => (byte)WasmInstructions.F64_const,
+
+                _ => throw ErrorHandler.Create($"Cannot emit constant of type {constInt.IntegerType}")
+            }, .. LEB128.EncodeSigned(constInt.Value)];
+        }
 
         public byte[] EmitAdd(IRAdd add)
         {
@@ -109,28 +182,26 @@ namespace CommonIR.Generators.WASM.Emit
             bytes.AddRange(EmitInstructions(block.Instructions));
             BlockContextStack.Pop();
 
+            bytes.Add((byte)WasmInstructions.End);
+
             return bytes.ToArray();
         }
 
-        public byte[] EmitJump(IRJump jump)
+        public byte[] EmitConditionalBlock(IRConditionalBlock conditionalBlock)
         {
-            var activeBlocks = BlockContextStack.ToArray();
-            int depth = Array.IndexOf(activeBlocks, jump.TargetBlock);
-
-            if (depth == -1)
-            {
-                throw new InvalidOperationException($"Compilation Error: Target block '{jump.TargetBlock.Name}' is unreachable.");
-            }
-
-            return [
-                (byte)WasmInstructions.Br,
-            .. LEB128.EncodeUnsigned((uint)depth)
+            List<byte> bytes = [
+                (byte)WasmInstructions.Block,
+                (byte)WasmTypeTranslator.TranslateIRType(conditionalBlock.ReturnType)
             ];
-        }
 
-        private bool IsFreestandingExpression(IRInstruction instr)
-        {
-            return instr is IRConstantInteger;
+            bytes.AddRange(EmitInstruction(conditionalBlock.Condition));
+            bytes.Add((byte)WasmInstructions.I32_eqz);
+            bytes.AddRange([(byte)WasmInstructions.Br_if, 0x00]);
+            bytes.AddRange(EmitInstructions(conditionalBlock.Instructions));
+
+            bytes.Add((byte)WasmInstructions.End);
+
+            return bytes.ToArray();
         }
     }
 }

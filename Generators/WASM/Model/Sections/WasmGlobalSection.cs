@@ -10,6 +10,11 @@
 
         public byte[] Serialize()
         {
+            if(this.Globals.Count == 0)
+            {
+                return [];
+            }
+
             using BinaryWriter writer = new BinaryWriter();
 
             writer.WriteULEB128((ulong)this.Globals.Count);
@@ -22,11 +27,6 @@
                 foreach (byte opcode in global.InitializationExpression)
                 {
                     writer.Write(opcode);
-                }
-
-                if (global.InitializationExpression.Count == 0 || global.InitializationExpression[^1] != 0x0B)
-                {
-                    writer.Write((byte)0x0B);
                 }
             }
 

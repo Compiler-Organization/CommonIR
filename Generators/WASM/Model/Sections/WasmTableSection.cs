@@ -11,6 +11,11 @@
 
         public byte[] Serialize()
         {
+            if(this.Tables.Count == 0)
+            {
+                return [];
+            }
+
             using BinaryWriter writer = new BinaryWriter();
 
             writer.WriteULEB128((ulong)this.Tables.Count);

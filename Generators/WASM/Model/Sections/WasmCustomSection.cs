@@ -14,6 +14,11 @@ namespace CommonIR.Generators.WASM.Model.Sections
 
         public byte[] Serialize()
         {
+            if(this.Data.Count == 0 && this.Name == string.Empty)
+            {
+                return [];
+            }
+
             using BinaryWriter writer = new BinaryWriter();
 
             byte[] nameBytes = Encoding.UTF8.GetBytes(this.Name ?? string.Empty);

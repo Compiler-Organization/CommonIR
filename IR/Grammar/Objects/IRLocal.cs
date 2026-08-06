@@ -7,6 +7,11 @@ namespace CommonIR.IR.Grammar.Objects
     /// </summary>
     public class IRLocal : IRObject, IRValueInstruction
     {
+        public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
+        public bool IsVoid { get; } = false;
+
+        public IRGrammar? Parent { get; set; }
+
         /// <summary>
         /// The name of the local. Automatically generated if nothing is declared.
         /// </summary>
@@ -15,7 +20,7 @@ namespace CommonIR.IR.Grammar.Objects
         /// <summary>
         /// The type of the local.
         /// </summary>
-        public IRType Type { get; set; }
+        public IRType ValueType { get; set; }
 
         /// <summary>
         /// Determines if the variable can be assigned at any point.
@@ -24,21 +29,21 @@ namespace CommonIR.IR.Grammar.Objects
 
         public IRLocal(IRType type, bool isMutable)
         {
-            Type = type;
+            ValueType = type;
             IsMutable = isMutable;
         }
 
         public IRLocal(string name, IRType type, bool isMutable)
         {
             Name = name;
-            Type = type;
+            ValueType = type;
             IsMutable = isMutable;
         }
 
         public IRLocal(string name, IRDataTypes type, bool isMutable)
         {
             Name = name;
-            Type = new IRType(type);
+            ValueType = new IRType(type);
             IsMutable = isMutable;
         }
 
@@ -46,5 +51,10 @@ namespace CommonIR.IR.Grammar.Objects
         /// Used internally to determine the location of the local variable.
         /// </summary>
         internal ulong Offset { get; set; }
+
+        public string Dump()
+        {
+            return $"local %{this.Name} : {this.ValueType.Dump()}";
+        }
     }
 }

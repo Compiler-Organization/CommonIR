@@ -1,4 +1,7 @@
-﻿using CommonIR.Generators.WASM.Model;
+﻿using CommonIR.Errors;
+using CommonIR.Generators.WASM.Model;
+using CommonIR.Generators.WASM.Model.Sections;
+using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Objects;
 
 namespace CommonIR.Generators.WASM.Translation
@@ -11,6 +14,8 @@ namespace CommonIR.Generators.WASM.Translation
 
             WasmMetadataTranslator objectTranslator = new WasmMetadataTranslator(iRModule);
             wasmModule.Sections.AddRange(objectTranslator.TranslateMetadataSections());
+
+            
 
             WasmFunctionTranslator instructionTranslator = new WasmFunctionTranslator(iRModule);
             wasmModule.Sections.Add(instructionTranslator.TranslateFunctionBodies());

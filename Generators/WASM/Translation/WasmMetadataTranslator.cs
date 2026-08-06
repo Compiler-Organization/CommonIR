@@ -1,4 +1,6 @@
-﻿using CommonIR.Generators.WASM.Model;
+﻿using CommonIR.Errors;
+using CommonIR.Generators.WASM.Emit;
+using CommonIR.Generators.WASM.Model;
 using CommonIR.Generators.WASM.Model.Sections;
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Objects;
@@ -25,7 +27,9 @@ namespace CommonIR.Generators.WASM.Translation
                 TranslateTypeSection(),
                 TranslateImportSection(),
                 TranslateFunctionSection(),
+                TranslateGlobalSection(),
                 TranslateExportSection(),
+                TranslateStartSection(),
             };
 
         private WasmTypeSection TranslateTypeSection()
@@ -36,7 +40,7 @@ namespace CommonIR.Generators.WASM.Translation
                 typeSection.Types.Add(new WasmTypeSectionType
                 {
                     Form = WasmForms.Function,
-                    ParameterTypes = [.. functionImport.Parameters.Select(p => WasmTypeTranslator.TranslateIRType(p.Type))],
+                    ParameterTypes = [.. functionImport.Parameters.Select(p => WasmTypeTranslator.TranslateIRType(p.ValueType))],
                     Returns = [.. functionImport.ReturnTypes.Where(t => t.DataType != IRDataTypes.Void).Select(WasmTypeTranslator.TranslateIRType)]
                 });
                 functionImport.Offset = (ulong)(typeSection.Types.Count - 1);
@@ -47,7 +51,7 @@ namespace CommonIR.Generators.WASM.Translation
                 typeSection.Types.Add(new WasmTypeSectionType
                 {
                     Form = WasmForms.Function,
-                    ParameterTypes = [.. function.Parameters.Select(p => WasmTypeTranslator.TranslateIRType(p.Type))],
+                    ParameterTypes = [.. function.Parameters.Select(p => WasmTypeTranslator.TranslateIRType(p.ValueType))],
                     Returns = [.. function.ReturnTypes.Where(t => t.DataType != IRDataTypes.Void).Select(WasmTypeTranslator.TranslateIRType)]
                 });
                 function.Offset = (ulong)(typeSection.Types.Count - 1);
@@ -81,6 +85,28 @@ namespace CommonIR.Generators.WASM.Translation
             return functionSection;
         }
 
+        private WasmGlobalSection TranslateGlobalSection()
+        {
+            WasmGlobalSection globalSection = new WasmGlobalSection();
+
+            foreach(IRGlobal global in this.Module.Globals)
+            {
+                WasmGlobalEntry globalEntry = new WasmGlobalEntry
+                {
+                    IsMutable = global.IsMutable,
+                    Type = WasmTypeTranslator.TranslateIRType(global.ValueType),
+                    InitializationExpression = [
+                        .. new WasmInstructionEmitter().EmitInstruction(global.InitialValue), 
+                        (byte)WasmInstructions.End
+                    ]
+                };
+
+                globalSection.Globals.Add(globalEntry);
+            }
+
+            return globalSection;
+        }
+
         private WasmExportSection TranslateExportSection()
         {
             WasmExportSection exportSection = new WasmExportSection();
@@ -94,6 +120,28 @@ namespace CommonIR.Generators.WASM.Translation
                 });
             }
             return exportSection;
+        }
+
+        private WasmStartSection TranslateStartSection() // TODO: Move this to the bindings generator - bad practice using the start section.
+                                                         // Could use the start sections for entrypoints with 0 returns and 0 parameters,
+                                                         // if that saves a couple cycles...
+        {
+            if (this.Module.EntryPoint != null)
+            {
+                if (this.Module.EntryPoint.HasReturn() || this.Module.EntryPoint.HasParameters())
+                {
+                    throw ErrorHandler.Create($"Entry point \"{this.Module.EntryPoint.Name}\" signature must have exactly 0 returns and 0 parameters!");
+                }
+
+                WasmStartSection startSection = new WasmStartSection()
+                {
+                    StartFunctionIndex = this.Module.EntryPoint.Offset,
+                };
+
+                return startSection;
+            }
+
+            return new WasmStartSection();
         }
     }
 }

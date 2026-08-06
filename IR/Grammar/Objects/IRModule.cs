@@ -1,14 +1,20 @@
 ﻿using CommonIR.Errors;
+using CommonIR.IR.Grammar.Instructions;
+using System.Text;
 
 namespace CommonIR.IR.Grammar.Objects
 {
-    public class IRModule
+    public class IRModule : IRObject
     {
         public List<IRGlobal> Globals { get; set; }
 
         public List<IRFunction> Functions { get; set; }
 
         public List<IRFunctionImport> FunctionImports { get; set; }
+
+        public IRFunction? EntryPoint { get; set; }
+
+        public IRGrammar? Parent { get; set; }
 
         public IRModule()
         {
@@ -27,7 +33,11 @@ namespace CommonIR.IR.Grammar.Objects
         /// <returns></returns>
         public IRFunctionImport CreateFunctionImport(string moduleName, string functionName, IRType returnType, List<IRLocal> parameterTypes)
         {
-            IRFunctionImport functionImport = new IRFunctionImport(moduleName, functionName, parameterTypes, new List<IRType> { returnType });
+            IRFunctionImport functionImport = new IRFunctionImport(moduleName, functionName, parameterTypes, new List<IRType> { returnType })
+            {
+                Parent = this
+            };
+
             this.FunctionImports.Add(functionImport);
             return functionImport;
         }
@@ -39,9 +49,13 @@ namespace CommonIR.IR.Grammar.Objects
         /// <param name="returnType"></param>
         /// <param name="parameterTypes"></param>
         /// <returns></returns>
-        public IRFunction CreateFunction(string name, IRType returnType, List<IRLocal> parameterTypes)
+        public IRFunction CreateFunction(string name, List<IRType> returnTypes, List<IRLocal> parameterTypes)
         {
-            IRFunction function = new IRFunction(name, parameterTypes, new List<IRType> { returnType });
+            IRFunction function = new IRFunction(name, parameterTypes, returnTypes)
+            {
+                Parent = this
+            };
+
             this.Functions.Add(function);
             return function;
         }
@@ -53,14 +67,14 @@ namespace CommonIR.IR.Grammar.Objects
         /// <param name="type"></param>
         /// <param name="isMutable"></param>
         /// <returns></returns>
-        public IRGlobal CreateGlobal(string name, IRType type, bool isMutable)
+        public IRGlobal CreateGlobal(string name, IRType type, IRValueInstruction initialValue, bool isMutable)
         {
-            IRGlobal global = new IRGlobal()
+            IRGlobal global = new IRGlobal(name, type, initialValue, isMutable)
             {
-                Name = name,
-                Type = type,
-                IsMutable = isMutable
+                Parent = this
             };
+
+            global.Offset = (ulong)this.Globals.Count;
             this.Globals.Add(global);
             return global;
         }
@@ -86,5 +100,33 @@ namespace CommonIR.IR.Grammar.Objects
             function = Functions.First(f => f.Name == name);
             return function != null;
         }
+
+        public string Dump()
+        {
+            var builder = new StringBuilder();
+
+            builder.AppendLine("Module:");
+            foreach (var global in Globals)
+            {
+                builder.AppendLine(global.Dump());
+            }
+
+            builder.AppendLine();
+
+            foreach (var functionImport in FunctionImports)
+            {
+                builder.AppendLine(functionImport.Dump());
+            }
+
+            builder.AppendLine();
+
+            foreach (var function in Functions)
+            {
+                builder.AppendLine(function.Dump());
+            }
+
+            return builder.ToString();
+        }
+
     }
 }

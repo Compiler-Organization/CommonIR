@@ -7,6 +7,11 @@ namespace CommonIR.IR.Grammar.Instructions
         /// <summary>
         /// The type of the instruction.
         /// </summary>
-        IRType Type { get; set; }
+        IRType ValueType { get; set; }
+
+        /// <summary>
+        /// All instructions referencing this instruction.
+        /// </summary>
+        public List<IRInstruction> References { get; set; }
     }
 }

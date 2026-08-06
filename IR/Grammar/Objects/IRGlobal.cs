@@ -7,6 +7,11 @@ namespace CommonIR.IR.Grammar.Objects
     /// </summary>
     public class IRGlobal : IRObject, IRValueInstruction
     {
+        public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
+        public bool IsVoid { get; } = false;
+
+        public IRGrammar? Parent { get; set; }
+
         /// <summary>
         /// The name of the global. Automatically generated if not defined.
         /// </summary>
@@ -15,16 +20,38 @@ namespace CommonIR.IR.Grammar.Objects
         /// <summary>
         /// The type of the global.
         /// </summary>
-        public required IRType Type { get; set; }
+        public IRType ValueType { get; set; }
 
         /// <summary>
         /// Determines if the variable can be assigned at any point.
         /// </summary>
         public bool IsMutable { get; set; } = false;
 
+        public IRValueInstruction InitialValue { get; set; }
+
+        /// <summary>
+        /// Creates a new initialized global.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="valueType"></param>
+        /// <param name="isMutable"></param>
+        public IRGlobal(string name, IRType valueType, IRValueInstruction initialValue, bool isMutable)
+        {
+            this.Name = name;
+            this.ValueType = valueType;
+            this.IsMutable = isMutable;
+
+            this.InitialValue = initialValue;
+        }
+
         /// <summary>
         /// Used internally to determine the location of the global variable.
         /// </summary>
         internal ulong Offset { get; set; }
+
+        public string Dump()
+        {
+            return $"global %{this.Name} : {this.ValueType.Dump()} = {this.InitialValue.Dump()}";
+        }
     }
 }
