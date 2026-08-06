@@ -1,4 +1,5 @@
-﻿using CommonIR.Generators.WASM;
+﻿using CommonIR.Generators;
+using CommonIR.Generators.WASM;
 using CommonIR.Generators.WASM.Model;
 using CommonIR.Generators.WASM.Translation;
 using CommonIR.IR;
@@ -42,11 +43,16 @@ namespace CommonIR.App
             builder.BuildCall(consoleLogImport, [failMarker]);
             builder.BuildReturn();
 
-            WasmGenerator wasmGenerator = new WasmGenerator(module);
+
+            CommonIRCodeGeneratorSettings codeGenSettings = new CommonIRCodeGeneratorSettings
+            {
+                Target = CommonIRTargets.WebAssembly_1_0_MVP
+            };
+            CommonIRCodeGenerator codeGen = new CommonIRCodeGenerator(codeGenSettings);
 
             Console.WriteLine(module.Dump());
 
-            foreach (SourceFile sourceFile in wasmGenerator.GenerateSourceFiles())
+            foreach (SourceFile sourceFile in codeGen.GenerateSourceFiles(module))
             {
                 string filename = $"{sourceFile.Name}{sourceFile.Extension}";
                 Console.WriteLine($"{filename} ({sourceFile.Data.Length} bytes): 0x{string.Join(", 0x", sourceFile.Data.Select(t => t.ToString("X2")))}");

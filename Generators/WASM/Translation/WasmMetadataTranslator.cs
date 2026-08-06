@@ -136,6 +136,7 @@ namespace CommonIR.Generators.WASM.Translation
                 WasmStartSection startSection = new WasmStartSection()
                 {
                     StartFunctionIndex = this.Module.EntryPoint.Offset,
+                    IsSet = true,
                 };
 
                 return startSection;

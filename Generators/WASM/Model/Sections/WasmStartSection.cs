@@ -8,8 +8,15 @@
 
         public ulong StartFunctionIndex { get; set; } = 0;
 
+        public bool IsSet { get; set; } = false;
+
         public byte[] Serialize()
         {
+            if(!IsSet)
+            {
+                return [];
+            }
+
             using BinaryWriter writer = new BinaryWriter();
 
             writer.WriteULEB128(this.StartFunctionIndex);
