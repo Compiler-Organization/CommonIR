@@ -35,4 +35,5 @@ jobs:
         run: |
           dotnet nuget push "./artifacts/*.nupkg" \
             --source https://api.nuget.org/v3/index.json \
-            --interactive
+            --api-key oy2-00000000000000000000000000000000000000 \
+            --skip-duplicate

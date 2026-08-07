@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-	<PackageId>Compiler-Organization.CommonIR</PackageId>
+	<PackageId>CommonIR</PackageId>
 	<Version>1.0.0</Version>
 	<Authors>Draugr-official</Authors>
 	<Company>Compiler Organization</Company>
