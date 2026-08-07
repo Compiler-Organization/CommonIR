@@ -31,9 +31,13 @@ jobs:
       - name: Pack
         run: dotnet pack --configuration Release --no-build --output ./artifacts
 
+      - name: NuGet Login
+        uses: NuGet/login@v1
+        with:
+          user: Draugr-official 
+
       - name: Push to NuGet
         run: |
           dotnet nuget push "./artifacts/*.nupkg" \
             --source https://api.nuget.org/v3/index.json \
-            --api-key oy2-00000000000000000000000000000000000000 \
             --skip-duplicate
