@@ -6,17 +6,31 @@
     <Nullable>enable</Nullable>
 
 	<PackageId>CommonIR</PackageId>
-	<Version>1.0.0</Version>
+	<Version>1.0.1</Version>
 	<Authors>Draugr-official</Authors>
 	<Company>Compiler Organization</Company>
 	<Description>Generic IR to support a variety of different targets, such as WASM, x8664, and other modern architectures.</Description>
 	<RepositoryUrl>https://github.com/Compiler-Organization/CommonIR</RepositoryUrl>
+	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	<PackageReadmeFile>README.md</PackageReadmeFile>
+	<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="CommonIR.App\**" />
     <EmbeddedResource Remove="CommonIR.App\**" />
     <None Remove="CommonIR.App\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="LICENSE.txt">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Update="README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
