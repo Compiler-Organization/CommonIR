@@ -4,6 +4,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+	<PackageId>Compiler-Organization.CommonIR</PackageId>
+	<Version>1.0.0</Version>
+	<Authors>Draugr-official</Authors>
+	<Company>Compiler Organization</Company>
+	<Description>Generic IR to support a variety of different targets, such as WASM, x8664, and other modern architectures.</Description>
+	<RepositoryUrl>https://github.com/Compiler-Organization/CommonIR</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
