@@ -1,6 +1,7 @@
 ﻿using CommonIR.Errors;
 using CommonIR.Generators.WASM;
 using CommonIR.IR.Grammar.Objects;
+using CommonIR.Passes.Optimization;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -18,6 +19,9 @@ namespace CommonIR.Generators
 
         public List<SourceFile> GenerateSourceFiles(IRModule module)
         {
+            IROptimizer optimizer = new IROptimizer(module);
+            optimizer.Optimize(this.Settings.OptimizingMode);
+
             switch(Settings.Target)
             {
                 case CommonIRTargets.WebAssembly_1_0_MVP:

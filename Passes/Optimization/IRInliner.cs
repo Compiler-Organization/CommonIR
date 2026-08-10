@@ -5,13 +5,18 @@ using System.Text;
 
 namespace CommonIR.Passes.Optimization
 {
-    public class IRInliner
+    public class IRInliner : IRPass
     {
         IRModule Module { get; set; }
 
         public IRInliner(IRModule module)
         {
             this.Module = module;
+        }
+
+        public void Pass()
+        {
+
         }
 
         void InlineFunctionCalls()

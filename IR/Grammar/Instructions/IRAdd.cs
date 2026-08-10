@@ -9,6 +9,8 @@ namespace CommonIR.IR.Grammar.Instructions
     {
         public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
 
+        public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
+
         public bool IsVoid { get; } = false;
 
         public IRGrammar? Parent { get; set; }
@@ -34,11 +36,13 @@ namespace CommonIR.IR.Grammar.Instructions
 
             left.References.Add(this);
             right.References.Add(this);
+
+            this.Operands.AddRange([left, right]);
         }
 
-        public string Dump()
+        public string Dump(int indentation)
         {
-            return $"add ({this.Left.Dump()}), ({this.Right.Dump()})";
+            return $"{new string('\t', indentation)}add ({this.Left.Dump(0)}), ({this.Right.Dump(0)})";
         }
     }
 }

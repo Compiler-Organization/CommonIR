@@ -9,6 +9,7 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         public string Name { get; set; } = "";
 
+        public bool IsExport { get; set; }
 
         /// <summary>
         /// The parameters of the function, represented as their respective types.
@@ -34,11 +35,13 @@ namespace CommonIR.IR.Grammar.Objects
         /// Default entry block appended to the start of the function when initialized.
         /// Function always starts here.
         /// </summary>
-        public IRCodeBlock Entryblock { get; set; }
+        public IRBlock Entryblock { get; set; }
 
         public IRGrammar? Parent { get; set; }
 
-        public IRFunction(string name, List<IRLocal> parameters, List<IRType> returnTypes)
+        public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
+
+        public IRFunction(string name, List<IRLocal> parameters, List<IRType> returnTypes, bool isExport)
         {
             Name = name;
             ReturnTypes = returnTypes;
@@ -48,11 +51,15 @@ namespace CommonIR.IR.Grammar.Objects
                 Parent = this
             };
 
+            this.Blocks.Add(this.Entryblock);
+
             foreach (IRLocal parameter in parameters)
             {
                 parameter.Offset = (ulong)Parameters.Count;
                 this.Parameters.Add(parameter);
             }
+
+            IsExport = isExport;
         }
 
         /// <summary>
@@ -85,7 +92,11 @@ namespace CommonIR.IR.Grammar.Objects
         /// <returns></returns>
         public IRBlock CreateBlock(string name)
         {
-            IRBlock block = new IRBlock(name);
+            IRBlock block = new IRBlock(name) 
+            {
+                Parent = this
+            };
+
             this.Blocks.Add(block);
             return block;
         }
@@ -96,9 +107,9 @@ namespace CommonIR.IR.Grammar.Objects
         public bool HasParameters()
             => this.Parameters.Count > 0;
 
-        public string Dump()
+        public string Dump(int indentation)
         {
-            return $"function {this.Name}({string.Join(", ", Parameters.Select(p => p.Dump()))}) : ({string.Join(", ", ReturnTypes.Select(r => r.Dump()))}) {{\n{this.Entryblock.Dump()}\n}}";
+            return $"{new string('\t', indentation)}{(this.IsExport ? "export " : "")}function {this.Name}({string.Join(", ", Parameters.Select(p => p.Dump(0)))}) : ({string.Join(", ", ReturnTypes.Select(r => r.Dump(0)))}) \n{new string('\t', indentation)}{{\n{this.Entryblock.Dump(indentation + 1)}\n{new string('\t', indentation)}}}";
         }
     }
 }

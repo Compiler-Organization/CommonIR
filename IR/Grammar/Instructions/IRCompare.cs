@@ -10,6 +10,8 @@ namespace CommonIR.IR.Grammar.Instructions
     {
         public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
 
+        public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
+
         public bool IsVoid { get; } = false;
 
         public IRGrammar? Parent { get; set; }
@@ -38,9 +40,11 @@ namespace CommonIR.IR.Grammar.Instructions
 
             left.References.Add(this);
             right.References.Add(this);
+
+            this.Operands.AddRange([left, right]);
         }
 
-        public string Dump()
+        public string Dump(int indentation)
         {
             string op = this.Operator switch
             {
@@ -55,7 +59,7 @@ namespace CommonIR.IR.Grammar.Instructions
                 _ => throw ErrorHandler.CreateNotImplimented($"Operator '{this.Operator}' is not implimented in comparsions yet")
             };
 
-            return $"compare ({this.Left.Dump()}){op}({this.Right.Dump()})";
+            return $"{new string('\t', indentation)}compare ({this.Left.Dump(0)}){op}({this.Right.Dump(0)})";
         }
     }
 

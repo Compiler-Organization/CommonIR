@@ -7,6 +7,6 @@
         /// </summary>
         public IRGrammar? Parent { get; set; }
 
-        public string Dump();
+        public string Dump(int indentation);
     }
 }

@@ -8,6 +8,8 @@ namespace CommonIR.IR.Grammar.Objects
     public class IRGlobal : IRObject, IRValueInstruction
     {
         public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
+
+        public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
         public bool IsVoid { get; } = false;
 
         public IRGrammar? Parent { get; set; }
@@ -42,6 +44,7 @@ namespace CommonIR.IR.Grammar.Objects
             this.IsMutable = isMutable;
 
             this.InitialValue = initialValue;
+            this.Operands.Add(initialValue);
         }
 
         /// <summary>
@@ -49,9 +52,14 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         internal ulong Offset { get; set; }
 
-        public string Dump()
+        public string DumpDeclaration(int indentation)
         {
-            return $"global %{this.Name} : {this.ValueType.Dump()} = {this.InitialValue.Dump()}";
+            return $"{new string('\t', indentation)}global %{this.Name} : {this.ValueType.Dump(0)} = {this.InitialValue.Dump(0)}";
+        }
+
+        public string Dump(int indentation)
+        {
+            return $"{new string('\t', indentation)}global %{this.Name} : {this.ValueType.Dump(0)}";
         }
     }
 }

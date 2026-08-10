@@ -15,8 +15,6 @@ namespace CommonIR.Generators.WASM.Translation
             WasmMetadataTranslator objectTranslator = new WasmMetadataTranslator(iRModule);
             wasmModule.Sections.AddRange(objectTranslator.TranslateMetadataSections());
 
-            
-
             WasmFunctionTranslator instructionTranslator = new WasmFunctionTranslator(iRModule);
             wasmModule.Sections.Add(instructionTranslator.TranslateFunctionBodies());
 

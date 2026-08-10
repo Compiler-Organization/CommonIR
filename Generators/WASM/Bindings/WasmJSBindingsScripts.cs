@@ -32,7 +32,7 @@ let wasm;
 const wasmImports = {
 " + importBindings + @"
     env: {
-        memory: new WebAssembly.Memory({ initial: 256, maximum: 512 }),
+        memory: new WebAssembly.Memory({ initial: 256 }),
         on_wasm_error: (errorCode) => console.error(`Wasm error occurred: ${errorCode}`),
         print_int: (value) => console.log(`Output from Wasm: ${value}`)
     }

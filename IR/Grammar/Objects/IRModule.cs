@@ -52,9 +52,9 @@ namespace CommonIR.IR.Grammar.Objects
         /// <param name="returnType"></param>
         /// <param name="parameterTypes"></param>
         /// <returns></returns>
-        public IRFunction CreateFunction(string name, List<IRType> returnTypes, List<IRLocal> parameterTypes)
+        public IRFunction CreateFunction(string name, List<IRType> returnTypes, List<IRLocal> parameterTypes, bool isExport)
         {
-            IRFunction function = new IRFunction(name, parameterTypes, returnTypes)
+            IRFunction function = new IRFunction(name, parameterTypes, returnTypes, isExport)
             {
                 Parent = this
             };
@@ -104,28 +104,28 @@ namespace CommonIR.IR.Grammar.Objects
             return function != null;
         }
 
-        public string Dump()
+        public string Dump(int indentation)
         {
             var builder = new StringBuilder();
 
             builder.AppendLine("Module:");
             foreach (var global in Globals)
             {
-                builder.AppendLine(global.Dump());
+                builder.AppendLine(global.DumpDeclaration(0));
             }
 
             builder.AppendLine();
 
             foreach (var functionImport in FunctionImports)
             {
-                builder.AppendLine(functionImport.Dump());
+                builder.AppendLine(functionImport.Dump(0));
             }
 
             builder.AppendLine();
 
             foreach (var function in Functions)
             {
-                builder.AppendLine(function.Dump());
+                builder.AppendLine(function.Dump(0));
             }
 
             return builder.ToString();

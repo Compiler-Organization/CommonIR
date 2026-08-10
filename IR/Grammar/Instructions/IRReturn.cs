@@ -4,6 +4,8 @@
     {
         public bool IsVoid { get; } = true;
 
+        public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
+
         public IRGrammar? Parent { get; set; }
 
         public IRValueInstruction? Value { get; set; }
@@ -17,6 +19,7 @@
             this.Value = value;
 
             value.References.Add(this);
+            this.Operands.Add(value);
         }
 
         /// <summary>
@@ -24,15 +27,15 @@
         /// </summary>
         public IRReturn() { }
 
-        public string Dump()
+        public string Dump(int indentation)
         {
             if (this.Value != null)
             {
-                return $"return ({this.Value.Dump()})";
+                return $"{new string('\t', indentation)}return ({this.Value.Dump(0)})";
             }
             else
             {
-                return "return";
+                return $"{new string('\t', indentation)}return";
             }
         }
     }

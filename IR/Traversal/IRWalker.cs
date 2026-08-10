@@ -7,20 +7,9 @@ namespace CommonIR.IR.Traversal
 {
     public class IRWalker
     {
-        public static List<IRInstruction> WalkOperands(IRInstruction instruction)
+        public static List<IRInstruction> WalkOperands(IRValueInstruction instruction)
         {
-            return instruction switch
-            {
-                IRStore store => [store.Target],
-                IRCall call => [.. call.Arguments],
-                IRAdd add => [add.Left, add.Right],
-                IRLoad load => [load.Target],
-                IRReturn ret => ret.Value is not null ? [ret.Value] : [],
-
-                _ => []
-            };
+            return instruction.References;
         }
-
-
     }
 }

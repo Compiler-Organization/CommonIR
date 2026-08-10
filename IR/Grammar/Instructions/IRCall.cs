@@ -9,6 +9,8 @@ namespace CommonIR.IR.Grammar.Instructions
     {
         public bool IsVoid { get; }
 
+        public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
+
         public IRGrammar? Parent { get; set; }
 
         /// <summary>
@@ -26,6 +28,8 @@ namespace CommonIR.IR.Grammar.Instructions
         public IRCall(IRFunction function)
         {
             this.Function = function;
+            this.Function.References.Add(this);
+
             this.ValueType = function.ReturnTypes[0]; // TODO: Handle multiple return types
             this.IsVoid = function.ReturnTypes.Count == 0 || function.ReturnTypes[0].DataType == IRDataTypes.Void;
         }
@@ -33,6 +37,8 @@ namespace CommonIR.IR.Grammar.Instructions
         public IRCall(IRFunction function, List<IRValueInstruction> arguments)
         {
             this.Function = function;
+            this.Function.References.Add(this);
+
             this.Arguments = arguments;
             this.ValueType = function.ReturnTypes[0]; // TODO: Handle multiple return types
             this.IsVoid = function.ReturnTypes.Count == 0 || function.ReturnTypes[0].DataType == IRDataTypes.Void;
@@ -41,11 +47,13 @@ namespace CommonIR.IR.Grammar.Instructions
             {
                 argument.References.Add(this);
             }
+
+            this.Operands.AddRange(arguments);
         }
 
-        public string Dump()
+        public string Dump(int indentation)
         {
-            return $"call {this.Function.Name}({string.Join(", ", this.Arguments.Select(a => a.Dump()))})";
+            return $"{new string('\t', indentation)}call {(this.Function is IRFunctionImport functionImport ?  $"{functionImport.ModuleName}.{functionImport.Name}" : this.Function.Name)}({string.Join(", ", this.Arguments.Select(a => a.Dump(0)))})";
         }
     }
 }

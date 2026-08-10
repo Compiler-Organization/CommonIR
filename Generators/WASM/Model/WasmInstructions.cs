@@ -19,6 +19,176 @@
         Br_table = 0x0E,
         Return = 0x0F,
 
+        // Managing memory
+        Memory_size = 0x3F,
+        Memory_grow = 0x40,
+
+        // Stores
+
+        /// <summary>
+        /// <para>Store 32-bit integer</para>
+        /// <para>Stack transition: [i32, i32] -> []</para>
+        /// <para>Pops a base address and an i32 value, then writes 4 bytes into linear memory.</para>
+        /// </summary>
+        I32_store = 0x36,
+
+        /// <summary>
+        /// <para>Store 64-bit integer</para>
+        /// <para>Stack transition: [i32, i64] -> []</para>
+        /// <para>Pops a base address and an i64 value, then writes 8 bytes into linear memory.</para>
+        /// </summary>
+        I64_store = 0x37,
+
+        /// <summary>
+        /// <para>Store 32-bit float</para>
+        /// <para>Stack transition: [i32, f32] -> []</para>
+        /// <para>Pops a base address and an f32 value, then writes 4 bytes into linear memory.</para>
+        /// </summary>
+        F32_store = 0x38,
+
+        /// <summary>
+        /// <para>Store 64-bit float</para>
+        /// <para>Stack transition: [i32, f64] -> []</para>
+        /// <para>Pops a base address and an f64 value, then writes 8 bytes into linear memory.</para>
+        /// </summary>
+        F64_store = 0x39,
+
+        /// <summary>
+        /// <para>Store i32 as 8-bit integer</para>
+        /// <para>Stack transition: [i32, i32] -> []</para>
+        /// <para>Pops a base address and an i32 value, wrapping it to write 1 byte into linear memory.</para>
+        /// </summary>
+        I32_store8 = 0x3A,
+
+        /// <summary>
+        /// <para>Store i32 as 16-bit integer</para>
+        /// <para>Stack transition: [i32, i32] -> []</para>
+        /// <para>Pops a base address and an i32 value, wrapping it to write 2 bytes into linear memory.</para>
+        /// </summary>
+        I32_store16 = 0x3B,
+
+        /// <summary>
+        /// <para>Store i64 as 8-bit integer</para>
+        /// <para>Stack transition: [i32, i64] -> []</para>
+        /// <para>Pops a base address and an i64 value, wrapping it to write 1 byte into linear memory.</para>
+        /// </summary>
+        I64_store8 = 0x3C,
+
+        /// <summary>
+        /// <para>Store i64 as 16-bit integer</para>
+        /// <para>Stack transition: [i32, i64] -> []</para>
+        /// <para>Pops a base address and an i64 value, wrapping it to write 2 bytes into linear memory.</para>
+        /// </summary>
+        I64_store16 = 0x3D,
+
+        /// <summary>
+        /// <para>Store i64 as 32-bit integer</para>
+        /// <para>Stack transition: [i32, i64] -> []</para>
+        /// <para>Pops a base address and an i64 value, wrapping it to write 4 bytes into linear memory.</para>
+        /// </summary>
+        I64_store32 = 0x3E,
+
+        // Loads
+
+        /// <summary>
+        /// <para>Load 32-bit integer</para>
+        /// <para>Stack transition: [i32] -> [i32]</para>
+        /// <para>Pops a base address, reads 4 bytes from memory, and pushes the i32 value.</para>
+        /// </summary>
+        I32_load = 0x28,
+
+        /// <summary>
+        /// <para>Load 64-bit integer</para>
+        /// <para>Stack transition: [i32] -> [i64]</para>
+        /// <para>Pops a base address, reads 8 bytes from memory, and pushes the i64 value.</para>
+        /// </summary>
+        I64_load = 0x29,
+
+        /// <summary>
+        /// <para>Load 32-bit float</para>
+        /// <para>Stack transition: [i32] -> [f32]</para>
+        /// <para>Pops a base address, reads 4 bytes from memory, and pushes the f32 value.</para>
+        /// </summary>
+        F32_load = 0x2A,
+
+        /// <summary>
+        /// <para>Load 64-bit float</para>
+        /// <para>Stack transition: [i32] -> [f64]</para>
+        /// <para>Pops a base address, reads 8 bytes from memory, and pushes the f64 value.</para>
+        /// </summary>
+        F64_load = 0x2B,
+
+        /// <summary>
+        /// <para>Load 8-bit integer (sign-extended to i32)</para>
+        /// <para>Stack transition: [i32] -> [i32]</para>
+        /// <para>Pops a base address, reads 1 byte from memory, sign-extends it, and pushes the i32 result.</para>
+        /// </summary>
+        I32_load8_s = 0x2C,
+
+        /// <summary>
+        /// <para>Load 8-bit integer (zero-extended to i32)</para>
+        /// <para>Stack transition: [i32] -> [i32]</para>
+        /// <para>Pops a base address, reads 1 byte from memory, zero-extends it, and pushes the i32 result.</para>
+        /// </summary>
+        I32_load8_u = 0x2D,
+
+        /// <summary>
+        /// <para>Load 16-bit integer (sign-extended to i32)</para>
+        /// <para>Stack transition: [i32] -> [i32]</para>
+        /// <para>Pops a base address, reads 2 bytes from memory, sign-extends it, and pushes the i32 result.</para>
+        /// </summary>
+        I32_load16_s = 0x2E,
+
+        /// <summary>
+        /// <para>Load 16-bit integer (zero-extended to i32)</para>
+        /// <para>Stack transition: [i32] -> [i32]</para>
+        /// <para>Pops a base address, reads 2 bytes from memory, zero-extends it, and pushes the i32 result.</para>
+        /// </summary>
+        I32_load16_u = 0x2F,
+
+        /// <summary>
+        /// <para>Load 8-bit integer (sign-extended to i64)</para>
+        /// <para>Stack transition: [i32] -> [i64]</para>
+        /// <para>Pops a base address, reads 1 byte from memory, sign-extends it, and pushes the i64 result.</para>
+        /// </summary>
+        I64_load8_s = 0x30,
+
+        /// <summary>
+        /// <para>Load 8-bit integer (zero-extended to i64)</para>
+        /// <para>Stack transition: [i32] -> [i64]</para>
+        /// <para>Pops a base address, reads 1 byte from memory, zero-extends it, and pushes the i64 result.</para>
+        /// </summary>
+        I64_load8_u = 0x31,
+
+        /// <summary>
+        /// <para>Load 16-bit integer (sign-extended to i64)</para>
+        /// <para>Stack transition: [i32] -> [i64]</para>
+        /// <para>Pops a base address, reads 2 bytes from memory, sign-extends it, and pushes the i64 result.</para>
+        /// </summary>
+        I64_load16_s = 0x32,
+
+        /// <summary>
+        /// <para>Load 16-bit integer (zero-extended to i64)</para>
+        /// <para>Stack transition: [i32] -> [i64]</para>
+        /// <para>Pops a base address, reads 2 bytes from memory, zero-extends it, and pushes the i64 result.</para>
+        /// </summary>
+        I64_load16_u = 0x33,
+
+        /// <summary>
+        /// <para>Load 32-bit integer (sign-extended to i64)</para>
+        /// <para>Stack transition: [i32] -> [i64]</para>
+        /// <para>Pops a base address, reads 4 bytes from memory, sign-extends it, and pushes the i64 result.</para>
+        /// </summary>
+        I64_load32_s = 0x34,
+
+        /// <summary>
+        /// <para>Load 32-bit integer (zero-extended to i64)</para>
+        /// <para>Stack transition: [i32] -> [i64]</para>
+        /// <para>Pops a base address, reads 4 bytes from memory, zero-extends it, and pushes the i64 result.</para>
+        /// </summary>
+        I64_load32_u = 0x35,
+
+
         // Locals
         Local_get = 0x20,
         Local_set = 0x21,

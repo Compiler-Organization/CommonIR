@@ -8,6 +8,8 @@ namespace CommonIR.IR.Grammar.Objects
     public class IRLocal : IRObject, IRValueInstruction
     {
         public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
+
+        public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
         public bool IsVoid { get; } = false;
 
         public IRGrammar? Parent { get; set; }
@@ -52,9 +54,9 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         internal ulong Offset { get; set; }
 
-        public string Dump()
+        public string Dump(int indentation)
         {
-            return $"local %{this.Name} : {this.ValueType.Dump()}";
+            return $"{new string('\t', indentation)}local %{this.Name} : {this.ValueType.Dump(0)}";
         }
     }
 }

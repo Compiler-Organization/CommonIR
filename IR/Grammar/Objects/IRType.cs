@@ -23,15 +23,15 @@
             UserObject = userObject;
         }
 
-        public string Dump()
+        public string Dump(int indentation)
         {
             if (UserObject != null)
             {
-                return $"{DataType}({UserObject.Dump()})";
+                return $"{new string('\t', indentation)}{DataType}({UserObject.Dump(0)})";
             }
             else
             {
-                return DataType.ToString();
+                return $"{new string('\t', indentation)}{DataType.ToString()}";
             }
         }
     }

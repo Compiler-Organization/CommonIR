@@ -5,6 +5,8 @@ namespace CommonIR.IR.Grammar.Instructions
     public class IRConstantInteger : IRValueInstruction
     {
         public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
+
+        public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
         public bool IsVoid { get; } = false;
 
         public IRGrammar? Parent { get; set; }
@@ -14,17 +16,15 @@ namespace CommonIR.IR.Grammar.Instructions
 
         public IRConstantInteger(IRDataTypes integerType, long value)
         {
-
-
             this.IntegerType = integerType;
             this.Value = value;
 
             this.ValueType = new IRType(integerType);
         }
 
-        public string Dump()
+        public string Dump(int indentation)
         {
-            return $"const ({this.IntegerType} {this.Value})";
+            return $"{new string('\t', indentation)}const ({this.IntegerType} {this.Value})";
         }
     }
 }

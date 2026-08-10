@@ -37,16 +37,16 @@ namespace CommonIR.Generators.WASM.Bindings
         string GenerateJSImportBindings()
         {
             StringBuilder builder = new StringBuilder();
-            var groupedImports = this.Module.FunctionImports.GroupBy(f => f.Module);
+            var groupedImports = this.Module.FunctionImports.GroupBy(f => f.ModuleName);
 
             foreach(var importGroup in groupedImports)
             {
-                builder.Append($"   {importGroup.First().Module}: {{\n");
+                builder.Append($"   {importGroup.First().ModuleName}: {{\n");
 
                 foreach(IRFunctionImport importedFunction in importGroup)
                 {
                     string parameters = string.Join(", ", importedFunction.Parameters.Select(p => p.Name));
-                    builder.Append($"       {importedFunction.Name}: ({parameters}) => {importedFunction.Module}.{importedFunction.Name}({parameters}),\n");
+                    builder.Append($"       {importedFunction.Name}: ({parameters}) => {importedFunction.ModuleName}.{importedFunction.Name}({parameters}),\n");
                 }
 
                 builder.Append("    },\n");

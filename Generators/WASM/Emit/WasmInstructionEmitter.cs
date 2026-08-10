@@ -40,6 +40,7 @@ namespace CommonIR.Generators.WASM.Emit
                 IRBlock block => EmitBlock(block),
                 IRReturn ret => EmitReturn(ret),
                 IRLoad load => EmitLoad(load),
+                IRStore store => EmitStore(store),
                 IRCompare compare => EmitCompare(compare),
                 IRConditionalBranch conditionalBranch => EmitConditionalBranch(conditionalBranch),
 
@@ -47,84 +48,36 @@ namespace CommonIR.Generators.WASM.Emit
             };
         }
 
-        public byte[] EmitCompare(IRCompare compare)
+        public byte[] EmitStore(IRStore store)
         {
-            WasmInstructions comparisonInstruction = (compare.ValueType.DataType, compare.Operator) switch
+            List<byte> bytecode = [];
+
+            bytecode.AddRange(EmitInstruction(store.Value));
+
+            bytecode.AddRange(store.Target switch
             {
-                (IRDataTypes.Int32, IRComparisonOperator.EqualTo) => WasmInstructions.I32_eq,
-                (IRDataTypes.Int32, IRComparisonOperator.NotEqualTo) => WasmInstructions.I32_ne,
-                (IRDataTypes.Int32, IRComparisonOperator.LessThan) => WasmInstructions.I32_lt_s,
-                (IRDataTypes.Int32, IRComparisonOperator.GreaterThan) => WasmInstructions.I32_gt_s,
-                (IRDataTypes.Int32, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I32_le_s,
-                (IRDataTypes.Int32, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I32_ge_s,
+                IRLocal local => local.IsMutable ? [(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(local.Offset)] : throw ErrorHandler.Create($"Cannot emit store on immutable local \"{local.Name}\""),
+                IRGlobal global => global.IsMutable ? [(byte)WasmInstructions.Global_set, .. LEB128.EncodeUnsigned(global.Offset)] : throw ErrorHandler.Create($"Cannot emit store on immutable global \"{global.Name}\""),
+                IRConstantInteger pointer => throw ErrorHandler.CreateNotImplimented("Stores to the heap is not yet implimented"),
+                _ => throw ErrorHandler.CreateNotImplimented($"Store targeting \"{store.Target}\" is not yet implimented.")
+            });
 
-                (IRDataTypes.UInt32, IRComparisonOperator.EqualTo) => WasmInstructions.I32_eq,
-                (IRDataTypes.UInt32, IRComparisonOperator.NotEqualTo) => WasmInstructions.I32_ne,
-                (IRDataTypes.UInt32, IRComparisonOperator.LessThan) => WasmInstructions.I32_lt_u,
-                (IRDataTypes.UInt32, IRComparisonOperator.GreaterThan) => WasmInstructions.I32_gt_u,
-                (IRDataTypes.UInt32, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I32_le_u,
-                (IRDataTypes.UInt32, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I32_ge_u,
-
-                (IRDataTypes.Int64, IRComparisonOperator.EqualTo) => WasmInstructions.I64_eq,
-                (IRDataTypes.Int64, IRComparisonOperator.NotEqualTo) => WasmInstructions.I64_ne,
-                (IRDataTypes.Int64, IRComparisonOperator.LessThan) => WasmInstructions.I64_lt_s,
-                (IRDataTypes.Int64, IRComparisonOperator.GreaterThan) => WasmInstructions.I64_gt_s,
-                (IRDataTypes.Int64, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I64_le_s,
-                (IRDataTypes.Int64, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I64_ge_s,
-
-                (IRDataTypes.UInt64, IRComparisonOperator.EqualTo) => WasmInstructions.I64_eq,
-                (IRDataTypes.UInt64, IRComparisonOperator.NotEqualTo) => WasmInstructions.I64_ne,
-                (IRDataTypes.UInt64, IRComparisonOperator.LessThan) => WasmInstructions.I64_lt_u,
-                (IRDataTypes.UInt64, IRComparisonOperator.GreaterThan) => WasmInstructions.I64_gt_u,
-                (IRDataTypes.UInt64, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I64_le_u,
-                (IRDataTypes.UInt64, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I64_ge_u,
-
-                (IRDataTypes.Float32, IRComparisonOperator.EqualTo) => WasmInstructions.F32_eq,
-                (IRDataTypes.Float32, IRComparisonOperator.NotEqualTo) => WasmInstructions.F32_ne,
-                (IRDataTypes.Float32, IRComparisonOperator.LessThan) => WasmInstructions.F32_lt,
-                (IRDataTypes.Float32, IRComparisonOperator.GreaterThan) => WasmInstructions.F32_gt,
-                (IRDataTypes.Float32, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.F32_le,
-                (IRDataTypes.Float32, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.F32_ge,
-
-                (IRDataTypes.Float64, IRComparisonOperator.EqualTo) => WasmInstructions.F64_eq,
-                (IRDataTypes.Float64, IRComparisonOperator.NotEqualTo) => WasmInstructions.F64_ne,
-                (IRDataTypes.Float64, IRComparisonOperator.LessThan) => WasmInstructions.F64_lt,
-                (IRDataTypes.Float64, IRComparisonOperator.GreaterThan) => WasmInstructions.F64_gt,
-                (IRDataTypes.Float64, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.F64_le,
-                (IRDataTypes.Float64, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.F64_ge,
-
-                _ => throw ErrorHandler.CreateNotImplimented($"Instruction '{compare.Operator}' for type '{compare.ValueType.DataType}' is not yet implemented.")
-            };
-
-            return [
-                .. EmitInstruction(compare.Left),
-                .. EmitInstruction(compare.Right),
-                (byte)comparisonInstruction,
-            ];
+            return bytecode.ToArray();
         }
 
         public byte[] EmitLoad(IRLoad load)
         {
             List<byte> bytecode = [];
 
-            bytecode.Add(load.Target switch
-            {
-                IRLocal => (byte)WasmInstructions.Local_get,
-                IRGlobal => (byte)WasmInstructions.Global_get,
-                _ => throw ErrorHandler.Create($"Cannot load value from a \"{load.Target}\"")
-            });
-
             bytecode.AddRange(load.Target switch
             {
-                IRLocal local => LEB128.EncodeUnsigned(local.Offset),
-                IRGlobal global => LEB128.EncodeUnsigned(global.Offset),
-
-                _ => throw new NotImplementedException($"No Wasm translation implemented for load target '{load.Target.GetType().Name}'")
+                IRLocal local => [(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(local.Offset)],
+                IRGlobal global => [(byte)WasmInstructions.Global_get, .. LEB128.EncodeUnsigned(global.Offset)],
+                _ => throw ErrorHandler.CreateNotImplimented($"Load targeting \"{load.Target}\" is not yet implimented.")
             });
 
             return bytecode.ToArray();
         }
-
 
         public byte[] EmitReturn(IRReturn ret) // Note: Complete proper return handling (as WASM requires leftover value(s) on the stack as the return).
         {
@@ -188,23 +141,6 @@ namespace CommonIR.Generators.WASM.Emit
             return bytes.ToArray();
         }
 
-        //public byte[] EmitConditionalBlock(IRConditionalBlock conditionalBlock)
-        //{
-        //    List<byte> bytes = [
-        //        (byte)WasmInstructions.Block,
-        //        (byte)WasmTypeTranslator.TranslateIRType(conditionalBlock.ReturnType)
-        //    ];
-
-        //    bytes.AddRange(EmitInstruction(conditionalBlock.Condition));
-        //    bytes.Add((byte)WasmInstructions.I32_eqz);
-        //    bytes.AddRange([(byte)WasmInstructions.Br_if, 0x00]);
-        //    bytes.AddRange(EmitInstructions(conditionalBlock.Instructions));
-
-        //    bytes.Add((byte)WasmInstructions.End);
-
-        //    return bytes.ToArray();
-        //}
-
         public byte[] EmitConditionalBranch(IRConditionalBranch conditionalBranch)
         {
             List<byte> bytes = [];
@@ -225,6 +161,62 @@ namespace CommonIR.Generators.WASM.Emit
             bytes.Add((byte)WasmInstructions.End);
 
             return bytes.ToArray();
+        }
+
+        public byte[] EmitCompare(IRCompare compare)
+        {
+            WasmInstructions comparisonInstruction = (compare.ValueType.DataType, compare.Operator) switch
+            {
+                (IRDataTypes.Int32, IRComparisonOperator.EqualTo) => WasmInstructions.I32_eq,
+                (IRDataTypes.Int32, IRComparisonOperator.NotEqualTo) => WasmInstructions.I32_ne,
+                (IRDataTypes.Int32, IRComparisonOperator.LessThan) => WasmInstructions.I32_lt_s,
+                (IRDataTypes.Int32, IRComparisonOperator.GreaterThan) => WasmInstructions.I32_gt_s,
+                (IRDataTypes.Int32, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I32_le_s,
+                (IRDataTypes.Int32, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I32_ge_s,
+
+                (IRDataTypes.UInt32, IRComparisonOperator.EqualTo) => WasmInstructions.I32_eq,
+                (IRDataTypes.UInt32, IRComparisonOperator.NotEqualTo) => WasmInstructions.I32_ne,
+                (IRDataTypes.UInt32, IRComparisonOperator.LessThan) => WasmInstructions.I32_lt_u,
+                (IRDataTypes.UInt32, IRComparisonOperator.GreaterThan) => WasmInstructions.I32_gt_u,
+                (IRDataTypes.UInt32, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I32_le_u,
+                (IRDataTypes.UInt32, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I32_ge_u,
+
+                (IRDataTypes.Int64, IRComparisonOperator.EqualTo) => WasmInstructions.I64_eq,
+                (IRDataTypes.Int64, IRComparisonOperator.NotEqualTo) => WasmInstructions.I64_ne,
+                (IRDataTypes.Int64, IRComparisonOperator.LessThan) => WasmInstructions.I64_lt_s,
+                (IRDataTypes.Int64, IRComparisonOperator.GreaterThan) => WasmInstructions.I64_gt_s,
+                (IRDataTypes.Int64, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I64_le_s,
+                (IRDataTypes.Int64, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I64_ge_s,
+
+                (IRDataTypes.UInt64, IRComparisonOperator.EqualTo) => WasmInstructions.I64_eq,
+                (IRDataTypes.UInt64, IRComparisonOperator.NotEqualTo) => WasmInstructions.I64_ne,
+                (IRDataTypes.UInt64, IRComparisonOperator.LessThan) => WasmInstructions.I64_lt_u,
+                (IRDataTypes.UInt64, IRComparisonOperator.GreaterThan) => WasmInstructions.I64_gt_u,
+                (IRDataTypes.UInt64, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.I64_le_u,
+                (IRDataTypes.UInt64, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.I64_ge_u,
+
+                (IRDataTypes.Float32, IRComparisonOperator.EqualTo) => WasmInstructions.F32_eq,
+                (IRDataTypes.Float32, IRComparisonOperator.NotEqualTo) => WasmInstructions.F32_ne,
+                (IRDataTypes.Float32, IRComparisonOperator.LessThan) => WasmInstructions.F32_lt,
+                (IRDataTypes.Float32, IRComparisonOperator.GreaterThan) => WasmInstructions.F32_gt,
+                (IRDataTypes.Float32, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.F32_le,
+                (IRDataTypes.Float32, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.F32_ge,
+
+                (IRDataTypes.Float64, IRComparisonOperator.EqualTo) => WasmInstructions.F64_eq,
+                (IRDataTypes.Float64, IRComparisonOperator.NotEqualTo) => WasmInstructions.F64_ne,
+                (IRDataTypes.Float64, IRComparisonOperator.LessThan) => WasmInstructions.F64_lt,
+                (IRDataTypes.Float64, IRComparisonOperator.GreaterThan) => WasmInstructions.F64_gt,
+                (IRDataTypes.Float64, IRComparisonOperator.LessThanOrEqual) => WasmInstructions.F64_le,
+                (IRDataTypes.Float64, IRComparisonOperator.GreaterThanOrEqual) => WasmInstructions.F64_ge,
+
+                _ => throw ErrorHandler.CreateNotImplimented($"Instruction '{compare.Operator}' for type '{compare.ValueType.DataType}' is not yet implemented.")
+            };
+
+            return [
+                .. EmitInstruction(compare.Left),
+                .. EmitInstruction(compare.Right),
+                (byte)comparisonInstruction,
+            ];
         }
     }
 }

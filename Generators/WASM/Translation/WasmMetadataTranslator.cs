@@ -66,7 +66,7 @@ namespace CommonIR.Generators.WASM.Translation
             {
                 importSection.Imports.Add(new WasmImport
                 {
-                    ModuleName = functionImport.Module,
+                    ModuleName = functionImport.ModuleName,
                     FieldName = functionImport.Name,
                     Kind = WasmImportKind.Function,
                     TypeIndex = (uint)functionImport.Offset

@@ -17,7 +17,7 @@ namespace CommonIR.IR
         /// <summary>
         /// The current block being built
         /// </summary>
-        public IRCodeBlock? Block { get; set; }
+        public IRBlock? Block { get; set; }
 
         private int Position { get; set; }
 
@@ -28,7 +28,7 @@ namespace CommonIR.IR
             this.Block = null;
         }
 
-        public IRBuilder(IRModule module, IRFunction function, IRCodeBlock block)
+        public IRBuilder(IRModule module, IRFunction function, IRBlock block)
         {
             this.Module = module;
             this.Function = function;
@@ -61,6 +61,36 @@ namespace CommonIR.IR
             return instruction;
         }
 
+        IRFunction? CheckpointFunction { get; set; }
+        IRBlock? CheckpointBlock { get; set; }
+
+        int CheckpointPosition { get; set; } = -1;
+
+        /// <summary>
+        /// Sets a checkpoint at the current function, in the current block at the current position
+        /// </summary>
+        public void SetCheckpoint()
+        {
+            this.CheckpointFunction = this.Function;
+            this.CheckpointBlock = this.Block;
+            this.CheckpointPosition = this.Position;
+        }
+
+        /// <summary>
+        /// Restores the builder to the checkpoint at the function, in the block at its position.
+        /// </summary>
+        public void RestoreCheckpoint()
+        {
+            if (this.CheckpointFunction == null || this.CheckpointBlock == null || this.Position == -1)
+            {
+                throw ErrorHandler.Create($"Cannot restore checkpoint as no checkpoint has been set yet.");
+            }
+
+            this.Function = this.CheckpointFunction;
+            this.Block = this.CheckpointBlock;
+            this.Position = this.CheckpointPosition;
+        }
+
         /// <summary>
         /// Positions the IR builder at the start of the current block.
         /// </summary>
@@ -73,7 +103,7 @@ namespace CommonIR.IR
         /// Positions the IR builder at the start of a given block.
         /// </summary>
         /// <param name="block"></param>
-        public void PositionAtStart(IRFunction function, IRCodeBlock block)
+        public void PositionAtStart(IRFunction function, IRBlock block)
         {
             this.Function = function;
             this.Block = block;
@@ -97,7 +127,7 @@ namespace CommonIR.IR
         /// Positions the IR builder at the end of a given block.
         /// </summary>
         /// <param name="block"></param>
-        public void PositionAtEnd(IRFunction function, IRCodeBlock block)
+        public void PositionAtEnd(IRFunction function, IRBlock block)
         {
             this.Function = function;
             this.Block = block;
@@ -117,19 +147,42 @@ namespace CommonIR.IR
         /// Positions the IR builder at a given instruction in the current block.
         /// </summary>
         /// <param name="instruction"></param>
-        public void PositionAtInstruction(IRInstruction instruction)
+        public void PositionAfterInstruction(IRInstruction instruction)
         {
             if (this.Block == null)
             {
                 throw ErrorHandler.Create("No block has been set in the IR builder!");
             }
 
-            this.Position = this.Block.Instructions.IndexOf(instruction);
+            int index = this.Block.Instructions.IndexOf(instruction);
 
-            if (this.Position == -1)
+            if (index == -1)
             {
                 throw ErrorHandler.Create($"This instruction does not exist in the block '{this.Block.Name}'");
             }
+
+            this.Position = index + 1;
+        }
+
+        /// <summary>
+        /// Positions the IR builder at a given instruction in the current block.
+        /// </summary>
+        /// <param name="instruction"></param>
+        public void PositionBeforeInstruction(IRInstruction instruction)
+        {
+            if (this.Block == null)
+            {
+                throw ErrorHandler.Create("No block has been set in the IR builder!");
+            }
+
+            int index = this.Block.Instructions.IndexOf(instruction);
+
+            if (index == -1)
+            {
+                throw ErrorHandler.Create($"This instruction does not exist in the block '{this.Block.Name}'");
+            }
+
+            this.Position = index;
         }
 
         /// <summary>
@@ -192,6 +245,7 @@ namespace CommonIR.IR
 
         /// <summary>
         /// Builds a load to a given target value instruction.
+        /// <para>If the target is an IRObject (such as IRLocal, IRGlobal), data will be loaded from their respective locations. If an integer is specified (Such as IRConstantInteger), this will be treated as a memory address and a value will be loaded from that address in memory.</para>
         /// </summary>
         /// <param name="target"></param>
         /// <returns></returns>
@@ -199,6 +253,20 @@ namespace CommonIR.IR
         {
             IRValueInstruction load = new IRLoad(target);
             return load;
+        }
+
+        /// <summary>
+        /// Builds a store to a given target with the given value.
+        /// <para>If the target is an IRObject (such as IRLocal, IRGlobal), data will be stored to their respective locations. If an integer is specified (Such as IRConstantInteger), this will be treated as a memory address and the value will be stored</para>
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public IRVoidInstruction BuildStore(IRValueInstruction target, IRValueInstruction value)
+        {
+            IRVoidInstruction store = new IRStore(target, value);
+            InsertVoidInstruction(store);
+            return store;
         }
 
         /// <summary>

@@ -12,10 +12,13 @@
         /// </summary>
         public IRGrammar? Parent { get; set; }
 
+        public List<IRInstruction> Operands { get; set; }
+
         /// <summary>
         /// Dumps the IR as a string representation of the instruction.
         /// </summary>
+        /// <param name="indentation">The amount of 4*' ' to be inserted before the dump</param>
         /// <returns></returns>
-        public string Dump();
+        public string Dump(int indentation);
     }
 }

@@ -6,6 +6,9 @@ using CommonIR.IR;
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Instructions;
 using CommonIR.IR.Grammar.Objects;
+using CommonIR.Passes.Optimization;
+// This is used to test functionality as its being developed.
+
 using System.Text;
 
 namespace CommonIR.App
@@ -15,11 +18,11 @@ namespace CommonIR.App
         static void Main(string[] args)
         {
             IRModule module = new IRModule("test");
-            IRGlobal testGlobal = module.CreateGlobal("testVal", new IRType(IRDataTypes.Int32), new IRConstantInteger(IRDataTypes.Int32, 43), false);
+            IRGlobal testGlobal = module.CreateGlobal("testVal", new IRType(IRDataTypes.Int32), new IRConstantInteger(IRDataTypes.Int32, 43), isMutable: true);
             IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.Int32, false)]);
 
 
-            IRFunction testFunction = module.CreateFunction("test_conditional", [new IRType(IRDataTypes.Void)], [new IRLocal("para1", IRDataTypes.Int32, false)]);
+            IRFunction testFunction = module.CreateFunction("test_conditional", [], [new IRLocal("para1", IRDataTypes.Int32, false)], isExport: true);
             IRBuilder builder = new IRBuilder(module, testFunction, testFunction.Entryblock);
             builder.PositionAtStart(testFunction, testFunction.Entryblock);
 
@@ -31,6 +34,7 @@ namespace CommonIR.App
                 constantValue1,
                 constantValue2
             );
+
             IRBlock thenBlock = testFunction.CreateBlock("if.then");
             IRBlock elseBlock = testFunction.CreateBlock("if.else");
             IRVoidInstruction condBr = builder.BuildConditionalBranch(comparison, thenBlock, elseBlock);
@@ -43,14 +47,19 @@ namespace CommonIR.App
             IRValueInstruction failMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 273);
             builder.BuildCall(consoleLogImport, [failMarker]);
 
+            IRFunction deadFunction = module.CreateFunction("dead_function", [], [], isExport: false);
+            IRGlobal deadGlobal = module.CreateGlobal("deadglobal", new IRType(IRDataTypes.Int32), new IRConstantInteger(IRDataTypes.Int32, 392), isMutable: true);
+            
+            builder.PositionAtStart(deadFunction, deadFunction.Entryblock);
+            builder.BuildCall(consoleLogImport, [builder.BuildLoad(deadGlobal)]);
+
 
             CommonIRCodeGeneratorSettings codeGenSettings = new CommonIRCodeGeneratorSettings
             {
-                Target = CommonIRTargets.WebAssembly_1_0_MVP
+                Target = CommonIRTargets.WebAssembly_1_0_MVP,
+                OptimizingMode = OptimizingMode.None,
             };
             CommonIRCodeGenerator codeGen = new CommonIRCodeGenerator(codeGenSettings);
-
-            Console.WriteLine(module.Dump());
 
             foreach (SourceFile sourceFile in codeGen.GenerateSourceFiles(module))
             {
@@ -66,6 +75,8 @@ namespace CommonIR.App
                 Console.WriteLine();
                 sourceFile.WriteToDisk();
             }
+
+            Console.WriteLine(module.Dump(0));
         }
     }
 }
