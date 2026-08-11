@@ -19,7 +19,7 @@ namespace CommonIR.App
         {
             IRModule module = new IRModule("test");
             IRGlobal testGlobal = module.CreateGlobal("testVal", new IRType(IRDataTypes.Int32), new IRConstantInteger(IRDataTypes.Int32, 43), isMutable: true);
-            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.Int32, false)]);
+            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.String, false)]);
 
 
             IRFunction testFunction = module.CreateFunction("test_conditional", [], [new IRLocal("para1", IRDataTypes.Int32, false)], isExport: true);
@@ -41,17 +41,11 @@ namespace CommonIR.App
 
             builder.PositionAtStart(testFunction, thenBlock);
             IRValueInstruction successMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 100);
-            builder.BuildCall(consoleLogImport, [successMarker]);
+            builder.BuildCall(consoleLogImport, [builder.BuildString("Success!")]);
 
             builder.PositionAtStart(testFunction, elseBlock);
             IRValueInstruction failMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 273);
-            builder.BuildCall(consoleLogImport, [failMarker]);
-
-            IRFunction deadFunction = module.CreateFunction("dead_function", [], [], isExport: false);
-            IRGlobal deadGlobal = module.CreateGlobal("deadglobal", new IRType(IRDataTypes.Int32), new IRConstantInteger(IRDataTypes.Int32, 392), isMutable: true);
-            
-            builder.PositionAtStart(deadFunction, deadFunction.Entryblock);
-            builder.BuildCall(consoleLogImport, [builder.BuildLoad(deadGlobal)]);
+            builder.BuildCall(consoleLogImport, [builder.BuildString("Failed!")]);
 
 
             CommonIRCodeGeneratorSettings codeGenSettings = new CommonIRCodeGeneratorSettings

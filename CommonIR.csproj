@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
 	<PackageId>CommonIR</PackageId>
-	<Version>1.1.0</Version>
+	<Version>1.1.1</Version>
 	<Authors>Draugr-official</Authors>
 	<Company>Compiler Organization</Company>
 	<Description>Generic IR to support a variety of different targets, such as WASM, x8664, and other modern architectures.</Description>
@@ -14,7 +14,7 @@
 	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-	<PackageReleaseNotes>Reworked how conditional branching functions, textual representation is now more solid, expanded general functionality. Added basic optimization passes such as dead code elimination.</PackageReleaseNotes>
+	<PackageReleaseNotes>Added constant string types, can now read strings from WASM. Automatically generates bindings for this.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

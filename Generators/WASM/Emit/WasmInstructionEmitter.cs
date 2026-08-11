@@ -13,6 +13,16 @@ namespace CommonIR.Generators.WASM.Emit
     {
         private Stack<IRBlock> BlockContextStack = new Stack<IRBlock>();
 
+        IRFunction Malloc { get; set; }
+
+        IRFunction Free { get; set; }
+
+        public WasmInstructionEmitter(IRFunction malloc, IRFunction free)
+        {
+            this.Malloc = malloc;
+            this.Free = free;
+        }
+
         public List<byte> EmitInstructions(List<IRInstruction> instructions)
         {
             var bytecode = new List<byte>();
@@ -44,8 +54,17 @@ namespace CommonIR.Generators.WASM.Emit
                 IRCompare compare => EmitCompare(compare),
                 IRConditionalBranch conditionalBranch => EmitConditionalBranch(conditionalBranch),
 
+                IRString str => EmitLoadString(str),
+
                 _ => throw new NotImplementedException($"No Wasm translation implemented for instruction '{instruction.GetType().Name}'")
             };
+        }
+
+        public byte[] EmitLoadString(IRString str)
+        {
+            List<byte> bytecode = [(byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned((int)str.Offset)];
+
+            return bytecode.ToArray();
         }
 
         public byte[] EmitStore(IRStore store)

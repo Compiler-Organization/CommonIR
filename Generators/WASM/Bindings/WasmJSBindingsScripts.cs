@@ -27,6 +27,40 @@ namespace CommonIR.Generators.WASM.Bindings
     }
 }
 
+const MAX_SAFARI_DECODE_BYTES = 16 * 1024;
+let numBytesDecoded = 0;
+let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
+
+let cachedUint8ArrayMemory = null;
+function getMemoryAsUint8Array() {
+    if(cachedUint8ArrayMemory === null || cachedUint8ArrayMemory.buffer !== wasmImports.env.memory.buffer) {
+        cachedUint8ArrayMemory = new Uint8Array(wasmImports.env.memory.buffer);
+    }
+    return cachedUint8ArrayMemory;
+}
+
+function decodeText(ptr, len) {
+    numBytesDecoded += len;
+    if (numBytesDecoded >= MAX_SAFARI_DECODE_BYTES) {
+        cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
+        cachedTextDecoder.decode();
+        numBytesDecoded = len;
+    }
+    return cachedTextDecoder.decode(getMemoryAsUint8Array().subarray(ptr, ptr + len));
+}
+
+function getStringFromWasm(ptr) {
+    const unsignedPtr = ptr >>> 0;
+    
+    const bytes = getMemoryAsUint8Array();
+    const view = new DataView(bytes.buffer);
+    const stringLength = view.getUint32(unsignedPtr, true);
+
+    const textStartPtr = unsignedPtr + 4;
+
+    return decodeText(textStartPtr, stringLength);
+}
+
 let wasm;
 
 const wasmImports = {
@@ -49,14 +83,5 @@ async function init() {
 
 export { init as default }
 ";
-
-        public static string CreateJSFunctionExport(IRFunction function)
-        {
-            string parameters = string.Join(", ", function.Parameters.Select(p => p.Name));
-
-            return $@"export function {function.Name}({parameters}) {{
-    return wasm.{function.Name}({parameters});
-}}";
-        }
     }
 }

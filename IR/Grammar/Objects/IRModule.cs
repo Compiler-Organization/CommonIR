@@ -12,6 +12,8 @@ namespace CommonIR.IR.Grammar.Objects
 
         public List<IRFunctionImport> FunctionImports { get; set; }
 
+        public List<IRObject> Constants { get; set; }
+
         public IRFunction? EntryPoint { get; set; }
 
         public IRGrammar? Parent { get; set; }
@@ -24,6 +26,7 @@ namespace CommonIR.IR.Grammar.Objects
             this.Globals = new List<IRGlobal>();
             this.Functions = new List<IRFunction>();
             this.FunctionImports = new List<IRFunctionImport>();
+            this.Constants = new List<IRObject>();
         }
 
         /// <summary>
@@ -46,7 +49,7 @@ namespace CommonIR.IR.Grammar.Objects
         }
 
         /// <summary>
-        /// Creates a function, adds it to the module and returns it.
+        /// Creates a function, adds it to the modules functions and returns it.
         /// </summary>
         /// <param name="name"></param>
         /// <param name="returnType"></param>
@@ -64,7 +67,7 @@ namespace CommonIR.IR.Grammar.Objects
         }
 
         /// <summary>
-        /// Creates a global, adds it to the module and returns it.
+        /// Creates a global, adds it to the modules globals and returns it.
         /// </summary>
         /// <param name="name"></param>
         /// <param name="type"></param>
@@ -74,12 +77,29 @@ namespace CommonIR.IR.Grammar.Objects
         {
             IRGlobal global = new IRGlobal(name, type, initialValue, isMutable)
             {
-                Parent = this
+                Parent = this,
+                Offset = (ulong)this.Globals.Count
             };
 
-            global.Offset = (ulong)this.Globals.Count;
             this.Globals.Add(global);
             return global;
+        }
+
+        /// <summary>
+        /// Creates a string, adds it to the modules constants and returns it
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public IRString CreateString(string value)
+        {
+            IRString _string = new IRString(value) 
+            {
+                Parent = this,
+                Offset = (ulong)this.Constants.Count
+            };
+
+            this.Constants.Add(_string);
+            return _string;
         }
 
         /// <summary>

@@ -10,6 +10,8 @@ namespace CommonIR.Generators.WASM.Translation
         {
             switch (dataType)
             {
+                case IRDataTypes.String:
+                case IRDataTypes.Pointer:
                 case IRDataTypes.Int32:
                     return WasmFormTypes.I32;
                 case IRDataTypes.Int64:

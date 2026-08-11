@@ -309,5 +309,16 @@ namespace CommonIR.IR
             IRValueInstruction compare = new IRCompare(comparisonOperator, left, right);
             return compare;
         }
+
+        /// <summary>
+        /// Builds a string which returns the pointer to the string.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildString(string value)
+        {
+            IRValueInstruction _string = this.Module.CreateString(value);
+            return _string;
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using CommonIR.IR.Grammar.Objects;
+﻿using CommonIR.IR.Grammar;
+using CommonIR.IR.Grammar.Objects;
 using System.Text;
 
 namespace CommonIR.Generators.WASM.Bindings
@@ -21,17 +22,27 @@ namespace CommonIR.Generators.WASM.Bindings
             return Builder.ToString();
         }
 
-        void EmitFunctionBindings()
-        {
-            foreach(IRFunction function in this.Module.Functions)
-            {
-                Builder.AppendLine(WasmJSBindingsScripts.CreateJSFunctionExport(function));
-            }
-        }
-
         void EmitInit()
         {
             Builder.AppendLine(WasmJSBindingsScripts.GetInitScript($"{this.Module.Name}_module.wasm", GenerateJSImportBindings()));
+        }
+
+        void EmitFunctionBindings()
+        {
+            foreach (IRFunction function in this.Module.Functions)
+            {
+                Builder.AppendLine(CreateJSFunctionExport(function));
+            }
+        }
+
+        string CreateJSFunctionExport(IRFunction function)
+        {
+            string parameters = string.Join(", ", function.Parameters.Select(p => p.Name));
+            string arguments = string.Join(", ", function.Parameters.Select(p => WrapWithHelperWriter(p.Name, p.ValueType)));
+
+            return $@"export function {function.Name}({parameters}) {{
+    return wasm.{function.Name}({arguments});
+}}";
         }
 
         string GenerateJSImportBindings()
@@ -46,13 +57,31 @@ namespace CommonIR.Generators.WASM.Bindings
                 foreach(IRFunctionImport importedFunction in importGroup)
                 {
                     string parameters = string.Join(", ", importedFunction.Parameters.Select(p => p.Name));
-                    builder.Append($"       {importedFunction.Name}: ({parameters}) => {importedFunction.ModuleName}.{importedFunction.Name}({parameters}),\n");
+                    string arguments = string.Join(", ", importedFunction.Parameters.Select(p => WrapWithHelperReader(p.Name, p.ValueType)));
+                    builder.Append($"       {importedFunction.Name}: ({parameters}) => {importedFunction.ModuleName}.{importedFunction.Name}({arguments}),\n");
                 }
 
                 builder.Append("    },\n");
             }
 
             return builder.ToString();
+        }
+
+        string WrapWithHelperReader(string value, IRType type)
+        {
+            return type.DataType switch
+            {
+                IRDataTypes.String => $"getStringFromWasm({value})",
+                _ => value
+            };
+        }
+
+        string WrapWithHelperWriter(string value, IRType type) // TODO: with malloc and all of that
+        {
+            return type.DataType switch
+            {
+                _ => value
+            };
         }
     }
 }

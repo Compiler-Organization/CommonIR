@@ -1,4 +1,5 @@
 ﻿using CommonIR.Errors;
+using CommonIR.Generators.WASM.Emit;
 using CommonIR.Generators.WASM.Model;
 using CommonIR.Generators.WASM.Model.Sections;
 using CommonIR.IR.Grammar;
@@ -8,15 +9,16 @@ namespace CommonIR.Generators.WASM.Translation
 {
     public class WasmTranslator
     {
-        public WasmModule TranslateIRModule(IRModule iRModule)
+        public WasmModule TranslateIRModule(IRModule module)
         {
             WasmModule wasmModule = new WasmModule();
 
-            WasmMetadataTranslator objectTranslator = new WasmMetadataTranslator(iRModule);
-            wasmModule.Sections.AddRange(objectTranslator.TranslateMetadataSections());
+            WasmMemoryFunctionEmitter memoryFunctionEmitter = new WasmMemoryFunctionEmitter(module);
+            IRFunction malloc = memoryFunctionEmitter.EmitMalloc();
+            IRFunction free = memoryFunctionEmitter.EmitFree();
 
-            WasmFunctionTranslator instructionTranslator = new WasmFunctionTranslator(iRModule);
-            wasmModule.Sections.Add(instructionTranslator.TranslateFunctionBodies());
+            WasmSectionTranslator objectTranslator = new WasmSectionTranslator(module, malloc, free);
+            wasmModule.Sections.AddRange(objectTranslator.TranslateSections());
 
             return wasmModule;
         }

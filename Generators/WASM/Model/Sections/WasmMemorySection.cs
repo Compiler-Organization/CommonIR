@@ -57,6 +57,6 @@
         /// <summary>
         /// The optional maximum size the linear memory is allowed to grow to in units of 64 KiB pages.
         /// </summary>
-        public uint? MaxPages { get; set; }
+        public uint? MaxPages { get; set; } = null;
     }
 }

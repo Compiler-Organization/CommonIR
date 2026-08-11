@@ -10,27 +10,41 @@ namespace CommonIR.Generators.WASM.Translation
     /// <summary>
     /// Translates IR objects into their WebAssembly representation.
     /// </summary>
-    internal class WasmMetadataTranslator
+    internal class WasmSectionTranslator
     {
         IRModule Module { get; set; }
 
-        public WasmMetadataTranslator(IRModule module)
+        IRFunction Malloc { get; set; }
+
+        IRFunction Free { get; set; }
+
+        public WasmSectionTranslator(IRModule module, IRFunction malloc, IRFunction free)
         {
             this.Module = module;
+            this.Malloc = malloc;
+            this.Free = free;
         }
 
         // NOTE: To anyone reading, each section needs to be in cronological order (except 0x00 custom), as the order of sections in a WASM module is important.
-        // You can see the order of the sections in WasmSectionIDs.
-        public List<WasmSection> TranslateMetadataSections()
-            => new List<WasmSection>()
+        // You can see the order of the sections in WasmSectionIDs. the data section is translated before the code section to handle forward references.
+        public List<WasmSection> TranslateSections()
+        {
+            WasmDataSection dataSection = TranslateDataSection();
+            WasmCodeSection codeSection = TranslateCodeSection();
+
+            return new List<WasmSection>()
             {
                 TranslateTypeSection(),
                 TranslateImportSection(),
                 TranslateFunctionSection(),
+                // TranslateMemorySection(),
                 TranslateGlobalSection(),
                 TranslateExportSection(),
                 TranslateStartSection(),
+                codeSection,
+                dataSection,
             };
+        }
 
         private WasmTypeSection TranslateTypeSection()
         {
@@ -72,6 +86,16 @@ namespace CommonIR.Generators.WASM.Translation
                     TypeIndex = (uint)functionImport.Offset
                 });
             }
+
+            importSection.Imports.Add(new WasmImport
+            {
+                ModuleName = "env",
+                FieldName = "memory",
+                Kind = WasmImportKind.Memory,
+                MinLimits = 256,
+                MaxLimits = null
+            });
+
             return importSection;
         }
 
@@ -85,6 +109,19 @@ namespace CommonIR.Generators.WASM.Translation
             return functionSection;
         }
 
+        private WasmMemorySection TranslateMemorySection()
+        {
+            WasmMemorySection memorySection = new WasmMemorySection();
+
+            memorySection.Memories.Add(new WasmMemoryLimits
+            {
+                MinPages = 1,// 64 KiB
+                MaxPages = null
+            });
+
+            return memorySection;
+        }
+
         private WasmGlobalSection TranslateGlobalSection()
         {
             WasmGlobalSection globalSection = new WasmGlobalSection();
@@ -96,7 +133,7 @@ namespace CommonIR.Generators.WASM.Translation
                     IsMutable = global.IsMutable,
                     Type = WasmTypeTranslator.TranslateIRType(global.ValueType),
                     InitializationExpression = [
-                        .. new WasmInstructionEmitter().EmitInstruction(global.InitialValue), 
+                        .. new WasmInstructionEmitter(this.Malloc, this.Free).EmitInstruction(global.InitialValue), 
                         (byte)WasmInstructions.End
                     ]
                 };
@@ -143,6 +180,100 @@ namespace CommonIR.Generators.WASM.Translation
             }
 
             return new WasmStartSection();
+        }
+
+        private WasmCodeSection TranslateCodeSection()
+        {
+            WasmCodeSection codeSection = new WasmCodeSection();
+            WasmInstructionEmitter instructionEmitter = new WasmInstructionEmitter(this.Malloc, this.Free);
+
+            foreach (IRFunction function in Module.Functions)
+            {
+                List<byte> bodyBytes = instructionEmitter.EmitInstructions(function.Entryblock.Instructions);
+
+                bodyBytes.Add((byte)WasmInstructions.End);
+
+                WasmFunctionBody wasmFunctionBody = new WasmFunctionBody()
+                {
+                    Instructions = [.. bodyBytes],
+                    Locals = TranslateLocals(function.Locals)
+                };
+
+                codeSection.Functions.Add(wasmFunctionBody);
+            }
+
+            return codeSection;
+        }
+
+        private List<WasmLocalGroup> TranslateLocals(List<IRLocal> locals)
+        {
+            if (locals == null || !locals.Any()) return new List<WasmLocalGroup>();
+
+            int groupIndex = 0;
+
+            return locals
+                .Select((local, index) => new
+                {
+                    Type = WasmTypeTranslator.TranslateIRDataType(local.ValueType.DataType),
+                    Index = index
+                })
+                .Select((item, index) => new
+                {
+                    item.Type,
+                    GroupKey = (index > 0 && item.Type != WasmTypeTranslator.TranslateIRDataType(locals[index - 1].ValueType.DataType))
+                        ? ++groupIndex
+                        : groupIndex
+                })
+                .GroupBy(g => new
+                {
+                    g.GroupKey,
+                    g.Type
+                })
+                .Select(g => new WasmLocalGroup
+                {
+                    Type = g.Key.Type,
+                    Count = (uint)g.Count()
+                })
+                .ToList();
+        }
+
+        private WasmDataSection TranslateDataSection()
+        {
+            WasmDataSection dataSection = new WasmDataSection();
+            ulong currentMemoryAddress = 0;
+            var irStrings = this.Module.Constants.OfType<IRString>().ToList();
+
+            foreach (IRString irString in irStrings) // Maybe a mistake using pascal strings instead of fat pointers, but time will tell.
+            {
+                byte[] stringBytes = System.Text.Encoding.UTF8.GetBytes(irString.Value);
+                uint stringLength = (uint)stringBytes.Length;
+
+                byte[] lengthBytes = BitConverter.GetBytes(stringLength);
+
+                List<byte> totalSegmentData = [.. lengthBytes, .. stringBytes];
+
+                irString.Offset = currentMemoryAddress;
+
+                List<byte> offsetExpression =
+                [
+                    (byte)WasmInstructions.I32_const,
+                    .. LEB128.EncodeSigned((int)currentMemoryAddress),
+                    (byte)WasmInstructions.End,
+                ];
+
+                WasmDataSegment segment = new WasmDataSegment
+                {
+                    Mode = WasmDataSegmentMode.ActiveImplicitMemory,
+                    OffsetExpression = offsetExpression,
+                    Data = totalSegmentData
+                };
+
+                dataSection.Segments.Add(segment);
+
+                currentMemoryAddress += (ulong)totalSegmentData.Count;
+            }
+
+            return dataSection;
         }
     }
 }
