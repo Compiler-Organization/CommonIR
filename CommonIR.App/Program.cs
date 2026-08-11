@@ -25,13 +25,10 @@ namespace CommonIR.App
             IRBuilder builder = new IRBuilder(module, testFunction, testFunction.Entryblock);
             builder.PositionAtStart(testFunction, testFunction.Entryblock);
 
-            IRValueInstruction constantValue1 = builder.BuildLoad(testFunction.Parameters[0]);
-            IRValueInstruction constantValue2 = builder.BuildConstantInteger(IRDataTypes.Int32, 47);
-
             IRValueInstruction comparison = builder.BuildCompare(
                 IRComparisonOperator.GreaterThan,
-                constantValue1,
-                constantValue2
+                testFunction.Parameters[0],
+                builder.BuildConstantInteger(IRDataTypes.Int32, 47)
             );
 
             IRBlock thenBlock = testFunction.CreateBlock("if.then");
@@ -40,7 +37,8 @@ namespace CommonIR.App
 
             builder.PositionAtStart(testFunction, thenBlock);
             IRValueInstruction successMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 100);
-            builder.BuildCall(consoleLogImport, [builder.BuildString("Success!")]);
+            IRValueInstruction value = (IRValueInstruction)builder.BuildCall(testFunction, []);
+            builder.BuildCall(consoleLogImport, [value]);
 
             builder.PositionAtStart(testFunction, elseBlock);
             IRValueInstruction failMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 273);

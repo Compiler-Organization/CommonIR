@@ -5,9 +5,10 @@ namespace CommonIR.IR.Grammar.Instructions.ControlFlow
     /// <summary>
     /// Makes a call to an existing function with given arguments.
     /// </summary>
-    public class IRCall : IRInstruction
+    public class IRCall : IRVoidInstruction, IRValueInstruction
     {
         public bool IsVoid { get; }
+        public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
 
         public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
 
@@ -30,25 +31,24 @@ namespace CommonIR.IR.Grammar.Instructions.ControlFlow
             this.Function = function;
             this.Function.References.Add(this);
 
-            this.ValueType = function.ReturnTypes[0]; // TODO: Handle multiple return types
             this.IsVoid = function.ReturnTypes.Count == 0 || function.ReturnTypes[0].DataType == IRDataTypes.Void;
+            this.ValueType = this.IsVoid ? new IRType(IRDataTypes.Void) : function.ReturnTypes[0]; // TODO: Handle multiple return types
         }
 
         public IRCall(IRFunction function, List<IRValueInstruction> arguments)
         {
             this.Function = function;
             this.Function.References.Add(this);
+            this.Operands.AddRange(arguments);
 
             this.Arguments = arguments;
-            this.ValueType = function.ReturnTypes[0]; // TODO: Handle multiple return types
             this.IsVoid = function.ReturnTypes.Count == 0 || function.ReturnTypes[0].DataType == IRDataTypes.Void;
+            this.ValueType = this.IsVoid ? new IRType(IRDataTypes.Void) : function.ReturnTypes[0]; // TODO: Handle multiple return types
 
             foreach(IRValueInstruction argument in arguments)
             {
                 argument.References.Add(this);
             }
-
-            this.Operands.AddRange(arguments);
         }
 
         public string Dump(int indentation)
