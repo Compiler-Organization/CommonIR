@@ -1,6 +1,10 @@
 ﻿using CommonIR.Errors;
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Instructions;
+using CommonIR.IR.Grammar.Instructions.Arithmetic;
+using CommonIR.IR.Grammar.Instructions.ControlFlow;
+using CommonIR.IR.Grammar.Instructions.Memory;
+using CommonIR.IR.Grammar.Instructions.Numeric;
 using CommonIR.IR.Grammar.Objects;
 
 namespace CommonIR.IR
@@ -205,6 +209,42 @@ namespace CommonIR.IR
         public IRValueInstruction BuildAdd(IRValueInstruction left, IRValueInstruction right)
         {
             IRValueInstruction instruction = new IRAdd(left: left, right: right);
+            return instruction;
+        }
+
+        /// <summary>
+        /// Builds a subtraction instruction which subtracts the right value from the left value.
+        /// </summary>
+        /// <param name="left"></param>
+        /// <param name="right"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildSubtract(IRValueInstruction left, IRValueInstruction right)
+        {
+            IRValueInstruction instruction = new IRSubtract(left: left, right: right);
+            return instruction;
+        }
+
+        /// <summary>
+        /// Builds a multiplication instruction which multiplies two values together.
+        /// </summary>
+        /// <param name="left"></param>
+        /// <param name="right"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildMultiply(IRValueInstruction left, IRValueInstruction right)
+        {
+            IRValueInstruction instruction = new IRMultiply(left: left, right: right);
+            return instruction;
+        }
+
+        /// <summary>
+        /// Builds a division instruction which divides the left value by the right value.
+        /// </summary>
+        /// <param name="left"></param>
+        /// <param name="right"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildDivide(IRValueInstruction left, IRValueInstruction right)
+        {
+            IRValueInstruction instruction = new IRDivide(left: left, right: right);
             return instruction;
         }
 

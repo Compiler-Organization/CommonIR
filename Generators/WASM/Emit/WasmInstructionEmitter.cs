@@ -4,8 +4,13 @@ using CommonIR.Generators.WASM.Model.Sections;
 using CommonIR.Generators.WASM.Translation;
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Instructions;
+using CommonIR.IR.Grammar.Instructions.Arithmetic;
+using CommonIR.IR.Grammar.Instructions.ControlFlow;
+using CommonIR.IR.Grammar.Instructions.Memory;
+using CommonIR.IR.Grammar.Instructions.Numeric;
 using CommonIR.IR.Grammar.Objects;
 using System.Diagnostics;
+using System.Net.NetworkInformation;
 
 namespace CommonIR.Generators.WASM.Emit
 {
@@ -44,8 +49,12 @@ namespace CommonIR.Generators.WASM.Emit
         {
             return instruction switch
             {
-                IRConstantInteger i => EmitConstant(i),
                 IRAdd add => EmitAdd(add),
+                IRSubtract subtract => EmitSubtract(subtract),
+                IRMultiply multiply => EmitMultiply(multiply),
+                IRDivide divide => EmitDivide(divide),
+
+                IRConstantInteger i => EmitConstant(i),
                 IRCall call => EmitCall(call),
                 IRBlock block => EmitBlock(block),
                 IRReturn ret => EmitReturn(ret),
@@ -55,14 +64,93 @@ namespace CommonIR.Generators.WASM.Emit
                 IRConditionalBranch conditionalBranch => EmitConditionalBranch(conditionalBranch),
 
                 IRString str => EmitLoadString(str),
+                IRGlobal global => EmitLoadGlobal(global),
+                IRLocal local => EmitLoadLocal(local),
 
                 _ => throw new NotImplementedException($"No Wasm translation implemented for instruction '{instruction.GetType().Name}'")
             };
         }
 
+        public byte[] EmitAdd(IRAdd add)
+        {
+            return [
+                .. EmitInstruction(add.Left),
+                .. EmitInstruction(add.Right),
+                add.ValueType.DataType switch {
+                    IRDataTypes.Int32 => (byte)WasmInstructions.I32_add,
+                    IRDataTypes.Int64 => (byte)WasmInstructions.I64_add,
+                    IRDataTypes.Float32 => (byte)WasmInstructions.F32_add,
+                    IRDataTypes.Float64 => (byte)WasmInstructions.F64_add,
+                    _ => throw ErrorHandler.Create($"IRAdd does not support operands of type {add.ValueType.Dump(0)}")
+                }
+            ];
+        }
+
+        public byte[] EmitSubtract(IRSubtract add)
+        {
+            return [
+                .. EmitInstruction(add.Left),
+                .. EmitInstruction(add.Right),
+                add.ValueType.DataType switch {
+                    IRDataTypes.Int32 => (byte)WasmInstructions.I32_sub,
+                    IRDataTypes.Int64 => (byte)WasmInstructions.I64_sub,
+                    IRDataTypes.Float32 => (byte)WasmInstructions.F32_sub,
+                    IRDataTypes.Float64 => (byte)WasmInstructions.F64_sub,
+                    _ => throw ErrorHandler.Create($"IRSubtract does not support operands of type {add.ValueType.Dump(0)}")
+                }
+            ];
+        }
+
+        public byte[] EmitMultiply(IRMultiply add)
+        {
+            return [
+                .. EmitInstruction(add.Left),
+                .. EmitInstruction(add.Right),
+                add.ValueType.DataType switch {
+                    IRDataTypes.Int32 => (byte)WasmInstructions.I32_mul,
+                    IRDataTypes.Int64 => (byte)WasmInstructions.I64_mul,
+                    IRDataTypes.Float32 => (byte)WasmInstructions.F32_mul,
+                    IRDataTypes.Float64 => (byte)WasmInstructions.F64_mul,
+                    _ => throw ErrorHandler.Create($"IRMultiply does not support operands of type {add.ValueType.Dump(0)}")
+                }
+            ];
+        }
+
+        public byte[] EmitDivide(IRDivide divide)
+        {
+            return [
+               .. EmitInstruction(divide.Left),
+                .. EmitInstruction(divide.Right),
+                divide.ValueType.DataType switch {
+                    IRDataTypes.Int32 => (byte)WasmInstructions.I32_div_s,
+                    IRDataTypes.UInt32 => (byte)WasmInstructions.I32_div_u,
+
+                    IRDataTypes.Int64 => (byte)WasmInstructions.I64_div_s,
+                    IRDataTypes.UInt64 => (byte)WasmInstructions.I64_div_u,
+
+                    IRDataTypes.Float32 => (byte)WasmInstructions.F32_div,
+                    IRDataTypes.Float64 => (byte)WasmInstructions.F64_div,
+                    _ => throw ErrorHandler.Create($"IRDivide does not support operands of type {divide.ValueType.Dump(0)}")
+                }
+           ];
+        }
+
+        public byte[] EmitLoadLocal(IRLocal local)
+        {
+            return [(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(local.Offset)];
+        }
+
+        public byte[] EmitLoadGlobal(IRGlobal global)
+        {
+            return [(byte)WasmInstructions.Global_get, .. LEB128.EncodeUnsigned(global.Offset)];
+        }
+
         public byte[] EmitLoadString(IRString str)
         {
-            List<byte> bytecode = [(byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned((int)str.Offset)];
+            List<byte> bytecode = [
+                (byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned((int)str.Offset),
+                (byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned((int)str.Value.Length)
+            ];
 
             return bytecode.ToArray();
         }
@@ -90,8 +178,6 @@ namespace CommonIR.Generators.WASM.Emit
 
             bytecode.AddRange(load.Target switch
             {
-                IRLocal local => [(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(local.Offset)],
-                IRGlobal global => [(byte)WasmInstructions.Global_get, .. LEB128.EncodeUnsigned(global.Offset)],
                 _ => throw ErrorHandler.CreateNotImplimented($"Load targeting \"{load.Target}\" is not yet implimented.")
             });
 
@@ -124,15 +210,6 @@ namespace CommonIR.Generators.WASM.Emit
 
                 _ => throw ErrorHandler.Create($"Cannot emit constant of type {constInt.IntegerType}")
             }, .. LEB128.EncodeSigned(constInt.Value)];
-        }
-
-        public byte[] EmitAdd(IRAdd add)
-        {
-            return [
-                .. EmitInstruction(add.Left),
-                .. EmitInstruction(add.Right),
-                (byte)WasmInstructions.I32_add
-            ];
         }
 
         public byte[] EmitCall(IRCall call)

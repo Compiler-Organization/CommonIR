@@ -1,11 +1,14 @@
 ﻿using CommonIR.IR.Grammar.Objects;
+using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace CommonIR.IR.Grammar.Instructions
+namespace CommonIR.IR.Grammar.Instructions.Numeric
 {
     /// <summary>
-    /// Adds two numbers together.
+    /// Divides the left value by the right value
     /// </summary>
-    public class IRAdd : IRValueInstruction
+    public class IRDivide : IRValueInstruction
     {
         public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
 
@@ -16,18 +19,18 @@ namespace CommonIR.IR.Grammar.Instructions
         public IRGrammar? Parent { get; set; }
 
         /// <summary>
-        /// The left side of the addition instruction.
+        /// The left side of the multiplication instruction.
         /// </summary>
         public IRValueInstruction Left { get; set; }
 
         /// <summary>
-        /// The right side of the addition instruction.
+        /// The right side of the multiplication instruction.
         /// </summary>
         public IRValueInstruction Right { get; set; }
 
         public IRType ValueType { get; set; }
 
-        public IRAdd(IRValueInstruction left, IRValueInstruction right)
+        public IRDivide(IRValueInstruction left, IRValueInstruction right)
         {
             this.Left = left;
             this.Right = right;
@@ -42,7 +45,7 @@ namespace CommonIR.IR.Grammar.Instructions
 
         public string Dump(int indentation)
         {
-            return $"{new string('\t', indentation)}add ({this.Left.Dump(0)}), ({this.Right.Dump(0)})";
+            return $"{new string('\t', indentation)}divide ({this.Left.Dump(0)}), ({this.Right.Dump(0)})";
         }
     }
 }

@@ -9,3 +9,5 @@ ___
 Documentation will be added as the project progresses.
 
 For a live demonstration of the IR in use, see [the current implimentation in Common C](https://github.com/Compiler-Organization/CommonC/blob/master/Targets/CommonIR/CodeGen/CommonIRCodeGen.cs).
+
+For more about how to use CommonIR, see [the usage examples](https://github.com/Compiler-Organization/CommonIR/blob/master/Documentation/Usage.md).

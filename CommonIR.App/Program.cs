@@ -1,10 +1,9 @@
 ﻿using CommonIR.Generators;
-using CommonIR.Generators.WASM;
-using CommonIR.Generators.WASM.Model;
-using CommonIR.Generators.WASM.Translation;
 using CommonIR.IR;
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Instructions;
+using CommonIR.IR.Grammar.Instructions.ControlFlow;
+using CommonIR.IR.Grammar.Instructions.Numeric;
 using CommonIR.IR.Grammar.Objects;
 using CommonIR.Passes.Optimization;
 // This is used to test functionality as its being developed.
@@ -19,7 +18,7 @@ namespace CommonIR.App
         {
             IRModule module = new IRModule("test");
             IRGlobal testGlobal = module.CreateGlobal("testVal", new IRType(IRDataTypes.Int32), new IRConstantInteger(IRDataTypes.Int32, 43), isMutable: true);
-            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.String, false)]);
+            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.String, isMutable: false)]);
 
 
             IRFunction testFunction = module.CreateFunction("test_conditional", [], [new IRLocal("para1", IRDataTypes.Int32, false)], isExport: true);

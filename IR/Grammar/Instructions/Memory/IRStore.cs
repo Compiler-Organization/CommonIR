@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace CommonIR.IR.Grammar.Instructions
+namespace CommonIR.IR.Grammar.Instructions.Memory
 {
     public class IRStore : IRVoidInstruction
     {

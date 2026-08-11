@@ -1,6 +1,6 @@
 ﻿using CommonIR.IR.Grammar.Objects;
 
-namespace CommonIR.IR.Grammar.Instructions
+namespace CommonIR.IR.Grammar.Instructions.ControlFlow
 {
     /// <summary>
     /// Makes a call to an existing function with given arguments.

@@ -1,4 +1,4 @@
-﻿namespace CommonIR.IR.Grammar.Instructions
+﻿namespace CommonIR.IR.Grammar.Instructions.ControlFlow
 {
     public class IRReturn : IRVoidInstruction
     {

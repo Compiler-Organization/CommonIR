@@ -250,7 +250,7 @@ namespace CommonIR.Generators.WASM.Translation
 
                 byte[] lengthBytes = BitConverter.GetBytes(stringLength);
 
-                List<byte> totalSegmentData = [.. lengthBytes, .. stringBytes];
+                List<byte> totalSegmentData = [.. stringBytes];
 
                 irString.Offset = currentMemoryAddress;
 

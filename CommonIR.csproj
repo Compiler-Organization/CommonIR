@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
 	<PackageId>CommonIR</PackageId>
-	<Version>1.1.1</Version>
+	<Version>1.1.2</Version>
 	<Authors>Draugr-official</Authors>
 	<Company>Compiler Organization</Company>
 	<Description>Generic IR to support a variety of different targets, such as WASM, x8664, and other modern architectures.</Description>
@@ -14,7 +14,9 @@
 	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-	<PackageReleaseNotes>Added constant string types, can now read strings from WASM. Automatically generates bindings for this.</PackageReleaseNotes>
+	<PackageReleaseNotes>Reorganized files, added IRSubtract, IRMultiply and IRDivide which is now readily available through the IRBuilder.</PackageReleaseNotes>
+	<PackageProjectUrl>https://github.com/Compiler-Organization/CommonIR</PackageProjectUrl>
+	<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <ItemGroup>

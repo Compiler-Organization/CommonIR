@@ -1,4 +1,5 @@
 ﻿using CommonIR.IR.Grammar.Instructions;
+using CommonIR.IR.Grammar.Instructions.ControlFlow;
 
 namespace CommonIR.IR.Grammar.Objects
 {
