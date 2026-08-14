@@ -1,4 +1,5 @@
-﻿using CommonIR.IR.Grammar;
+﻿using CommonIR.Errors;
+using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Objects;
 using System.Text;
 
@@ -38,7 +39,7 @@ namespace CommonIR.Generators.WASM.Bindings
         string CreateJSFunctionExport(IRFunction function)
         {
             string parameters = string.Join(", ", function.Parameters.Select(p => p.Name));
-            string arguments = string.Join(", ", function.Parameters.Select(p => WrapWithHelperWriter(p.Name, p.ValueType)));
+            string arguments = WrapWithHelperReaders(function.Parameters);
 
             return $@"export function {function.Name}({parameters}) {{
     return wasm.{function.Name}({arguments});
@@ -57,7 +58,7 @@ namespace CommonIR.Generators.WASM.Bindings
                 foreach(IRFunctionImport importedFunction in importGroup)
                 {
                     string parameters = string.Join(", ", importedFunction.Parameters.Select(p => p.Name));
-                    string arguments = string.Join(", ", importedFunction.Parameters.Select(p => WrapWithHelperReader(p.Name, p.ValueType)));
+                    string arguments = WrapWithHelperReaders(importedFunction.Parameters);
                     builder.Append($"       {importedFunction.Name}: ({parameters}) => {importedFunction.ModuleName}.{importedFunction.Name}({arguments}),\n");
                 }
 
@@ -65,6 +66,36 @@ namespace CommonIR.Generators.WASM.Bindings
             }
 
             return builder.ToString();
+        }
+
+        string WrapWithHelperReaders(List<IRLocal> locals)
+        {
+            List<string> convertedLocals = new List<string>();
+
+            for(int i = 0; i < locals.Count; i++)
+            {
+                IRLocal local = locals[i];
+                if(local.ValueType.IsReferenceType)
+                {
+                    if(local.LengthCompanion == null)
+                    {
+                        throw ErrorHandler.Create($"Length companion to fat pointer '{local.Name}' was never declared.");
+                    }
+
+                    convertedLocals.Add(WrapWithHelperReader($"{local.Name}, {local.LengthCompanion.Name}", local.ValueType));
+                    
+                    if(i + 1 < locals.Count && locals[i + 1] == local.LengthCompanion)
+                    {
+                        i++;
+                    }
+                }
+                else 
+                {
+                    convertedLocals.Add(WrapWithHelperReader(local.Name, local.ValueType));
+                }
+            }
+
+            return string.Join(", ", convertedLocals);
         }
 
         string WrapWithHelperReader(string value, IRType type)

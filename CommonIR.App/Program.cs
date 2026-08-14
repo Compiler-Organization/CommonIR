@@ -37,8 +37,7 @@ namespace CommonIR.App
 
             builder.PositionAtStart(testFunction, thenBlock);
             IRValueInstruction successMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 100);
-            IRValueInstruction value = (IRValueInstruction)builder.BuildCall(testFunction, []);
-            builder.BuildCall(consoleLogImport, [value]);
+            builder.BuildCall(consoleLogImport, [builder.BuildString("Success!")]);
 
             builder.PositionAtStart(testFunction, elseBlock);
             IRValueInstruction failMarker = builder.BuildConstantInteger(IRDataTypes.Int32, 273);

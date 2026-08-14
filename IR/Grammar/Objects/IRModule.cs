@@ -13,6 +13,8 @@ namespace CommonIR.IR.Grammar.Objects
         public List<IRFunctionImport> FunctionImports { get; set; }
 
         public List<IRObject> Constants { get; set; }
+        private ulong ConstantsSize { get; set; } = 0;
+        private const int Alignment = 4;
 
         public IRFunction? EntryPoint { get; set; }
 
@@ -75,14 +77,36 @@ namespace CommonIR.IR.Grammar.Objects
         /// <returns></returns>
         public IRGlobal CreateGlobal(string name, IRType type, IRValueInstruction initialValue, bool isMutable)
         {
-            IRGlobal global = new IRGlobal(name, type, initialValue, isMutable)
+            if (type.IsReferenceType)
             {
-                Parent = this,
-                Offset = (ulong)this.Globals.Count
-            };
+                IRGlobal aggregatePointer = new IRGlobal($"{name}_ptr", type, initialValue, isMutable)
+                {
+                    Parent = this,
+                    Offset = (ulong)this.Globals.Count
+                };
+                this.Globals.Add(aggregatePointer);
 
-            this.Globals.Add(global);
-            return global;
+                IRGlobal lengthCompanion = new IRGlobal($"{name}_len", new IRType(IRDataTypes.Int32), initialValue, isMutable)
+                {
+                    Parent = this,
+                    Offset = (ulong)this.Globals.Count
+                };
+                this.Globals.Add(lengthCompanion);
+
+                aggregatePointer.LengthCompanion = lengthCompanion;
+
+                return aggregatePointer;
+            }
+            else
+            {
+                IRGlobal global = new IRGlobal(name, type, initialValue, isMutable)
+                {
+                    Parent = this,
+                    Offset = (ulong)this.Globals.Count
+                };
+                this.Globals.Add(global);
+                return global;
+            }
         }
 
         /// <summary>
@@ -92,13 +116,18 @@ namespace CommonIR.IR.Grammar.Objects
         /// <returns></returns>
         public IRString CreateString(string value)
         {
-            IRString _string = new IRString(value) 
+            IRString _string = new IRString(value)
             {
                 Parent = this,
+                //Offset = ConstantsSize
                 Offset = (ulong)this.Constants.Count
             };
 
             this.Constants.Add(_string);
+
+            //ConstantsSize += (ulong)Encoding.UTF8.GetBytes(value).LongLength;
+            //ConstantsSize = (ConstantsSize + (Alignment - 1)) & ~(ulong)(Alignment - 1);
+
             return _string;
         }
 

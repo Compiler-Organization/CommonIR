@@ -49,16 +49,10 @@ function decodeText(ptr, len) {
     return cachedTextDecoder.decode(getMemoryAsUint8Array().subarray(ptr, ptr + len));
 }
 
-function getStringFromWasm(ptr) {
+function getStringFromWasm(ptr, len) {
     const unsignedPtr = ptr >>> 0;
-    
-    const bytes = getMemoryAsUint8Array();
-    const view = new DataView(bytes.buffer);
-    const stringLength = view.getUint32(unsignedPtr, true);
 
-    const textStartPtr = unsignedPtr + 4;
-
-    return decodeText(textStartPtr, stringLength);
+    return decodeText(unsignedPtr, len);
 }
 
 let wasm;

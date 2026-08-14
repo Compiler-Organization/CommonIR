@@ -30,34 +30,41 @@ namespace CommonIR.IR.Grammar.Objects
         /// <para>Returns 4 if the type is non-scalar (pointer)</para>
         /// </summary>
         /// <returns></returns>
-        public int GetWidth()
+        public int Width => this.DataType switch
         {
-            return this.DataType switch
+            IRDataTypes.Int8
+            or IRDataTypes.UInt8
+            or IRDataTypes.Bool => 1,
+
+            IRDataTypes.Int16
+            or IRDataTypes.UInt16 => 2,
+
+            IRDataTypes.Int32
+            or IRDataTypes.UInt32 => 4,
+
+            IRDataTypes.Int64
+            or IRDataTypes.UInt64 => 8,
+
+            IRDataTypes.Float32 => 4,
+            IRDataTypes.Float64 => 8,
+
+            IRDataTypes.Pointer
+            or IRDataTypes.String
+            or IRDataTypes.Array
+            or IRDataTypes.UserObject => 4,
+
+            _ => throw ErrorHandler.Create($"Cannot get size of {this.DataType} as it is not supported."),
+        };
+
+        public bool IsReferenceType
+            => this.DataType switch
             {
-                IRDataTypes.Int8 
-                or IRDataTypes.UInt8 
-                or IRDataTypes.Bool => 1,
-
-                IRDataTypes.Int16 
-                or IRDataTypes.UInt16 => 2,
-
-                IRDataTypes.Int32 
-                or IRDataTypes.UInt32 => 4,
-
-                IRDataTypes.Int64 
-                or IRDataTypes.UInt64 => 8,
-
-                IRDataTypes.Float32 => 4,
-                IRDataTypes.Float64 => 8,
-
-                IRDataTypes.Pointer 
-                or IRDataTypes.String 
-                or IRDataTypes.Array 
-                or IRDataTypes.UserObject => 4,
-
-                _ => throw ErrorHandler.Create($"Cannot get size of {this.DataType} as it is not supported."),
+                IRDataTypes.Pointer
+                or IRDataTypes.String
+                or IRDataTypes.Array
+                or IRDataTypes.UserObject => true,
+                _ => false,
             };
-        }
 
         public string Dump(int indentation)
         {

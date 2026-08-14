@@ -29,6 +29,11 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         public bool IsMutable { get; set; } = false;
 
+         /// <summary>
+         /// If the local is a fat pointer, this is the length companion to it.
+         /// </summary>
+        public IRLocal? LengthCompanion { get; set; }
+
         public IRLocal(IRType type, bool isMutable)
         {
             ValueType = type;

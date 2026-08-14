@@ -32,6 +32,11 @@ namespace CommonIR.IR.Grammar.Objects
         public IRValueInstruction InitialValue { get; set; }
 
         /// <summary>
+        /// If the global is a fat pointer, this is the length companion to the pointer.
+        /// </summary>
+        public IRGlobal? LengthCompanion { get; set; }
+
+        /// <summary>
         /// Creates a new initialized global.
         /// </summary>
         /// <param name="name"></param>

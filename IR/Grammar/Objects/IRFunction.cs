@@ -45,7 +45,6 @@ namespace CommonIR.IR.Grammar.Objects
         public IRFunction(string name, List<IRLocal> parameters, List<IRType> returnTypes, bool isExport)
         {
             Name = name;
-            ReturnTypes = returnTypes;
 
             this.Entryblock = new IRBlock("<entry>")
             {
@@ -54,10 +53,44 @@ namespace CommonIR.IR.Grammar.Objects
 
             this.Blocks.Add(this.Entryblock);
 
+            var flattenedReturnTypes = new List<IRType>();
+            foreach (var retType in returnTypes)
+            {
+                if (retType.IsReferenceType)
+                {
+                    flattenedReturnTypes.Add(new IRType(IRDataTypes.Int32));
+                    flattenedReturnTypes.Add(new IRType(IRDataTypes.Int32));
+                }
+                else
+                {
+                    flattenedReturnTypes.Add(retType);
+                }
+            }
+            ReturnTypes = flattenedReturnTypes;
+
             foreach (IRLocal parameter in parameters)
             {
-                parameter.Offset = (ulong)Parameters.Count;
-                this.Parameters.Add(parameter);
+                if (parameter.ValueType.IsReferenceType)
+                {
+                    IRLocal aggregatePointer = new IRLocal($"{parameter.Name}_ptr", parameter.ValueType, parameter.IsMutable)
+                    {
+                        Offset = (ulong)this.Parameters.Count
+                    };
+                    this.Parameters.Add(aggregatePointer);
+
+                    IRLocal lengthCompanion = new IRLocal($"{parameter.Name}_len", new IRType(IRDataTypes.Int32), parameter.IsMutable)
+                    {
+                        Offset = (ulong)this.Parameters.Count
+                    };
+                    this.Parameters.Add(lengthCompanion);
+
+                    aggregatePointer.LengthCompanion = lengthCompanion;
+                }
+                else
+                {
+                    parameter.Offset = (ulong)this.Parameters.Count;
+                    this.Parameters.Add(parameter);
+                }
             }
 
             IsExport = isExport;
