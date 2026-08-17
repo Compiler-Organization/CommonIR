@@ -11,6 +11,7 @@ using CommonIR.IR.Grammar.Instructions.Numeric;
 using CommonIR.IR.Grammar.Objects;
 using System.Diagnostics;
 using System.Net.NetworkInformation;
+using System.Text;
 
 namespace CommonIR.Generators.WASM.Emit
 {
@@ -66,9 +67,29 @@ namespace CommonIR.Generators.WASM.Emit
                 IRString str => EmitLoadString(str),
                 IRGlobal global => EmitLoadGlobal(global),
                 IRLocal local => EmitLoadLocal(local),
+                IRStruct _struct => EmitStruct(_struct),
+                IRBytes bytes => EmitBytes(bytes),
+
+                IRMalloc malloc => EmitMalloc(malloc),
 
                 _ => throw new NotImplementedException($"No Wasm translation implemented for instruction '{instruction.GetType().Name}'")
             };
+        }
+
+        public byte[] EmitMalloc(IRMalloc malloc)
+        {
+            return [.. EmitInstruction(malloc.Bytes), (byte)WasmInstructions.Call, .. LEB128.EncodeUnsigned(this.Malloc.Offset)];
+        }
+
+        public byte[] EmitBytes(IRBytes bytes)
+        {
+            return bytes.Bytes;
+        }
+
+        public byte[] EmitStruct(IRStruct _struct)
+        {
+            // TODO: Impliment struct allocation using the factorized "malloc" function.
+            throw ErrorHandler.CreateNotImplimented("");
         }
 
         public byte[] EmitAdd(IRAdd add)
@@ -149,25 +170,50 @@ namespace CommonIR.Generators.WASM.Emit
         {
             List<byte> bytecode = [
                 (byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned((int)str.Offset),
-                (byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned((int)str.Value.Length)
+                (byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned(Encoding.UTF8.GetBytes(str.Value).LongLength)
             ];
 
             return bytecode.ToArray();
         }
 
-        public byte[] EmitStore(IRStore store)
+        public byte[] EmitStore(IRStore store) // TODO: fix this suddenly not emitting instructions for multiply, etc
         {
             List<byte> bytecode = [];
 
-            bytecode.AddRange(EmitInstruction(store.Value));
 
-            bytecode.AddRange(store.Target switch
+            if(store.Offset != null)
             {
-                IRLocal local => local.IsMutable ? [(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(local.Offset)] : throw ErrorHandler.Create($"Cannot emit store on immutable local \"{local.Name}\""),
-                IRGlobal global => global.IsMutable ? [(byte)WasmInstructions.Global_set, .. LEB128.EncodeUnsigned(global.Offset)] : throw ErrorHandler.Create($"Cannot emit store on immutable global \"{global.Name}\""),
-                IRConstantInteger pointer => throw ErrorHandler.CreateNotImplimented("Stores to the heap is not yet implimented"),
-                _ => throw ErrorHandler.CreateNotImplimented($"Store targeting \"{store.Target}\" is not yet implimented.")
-            });
+                bytecode.AddRange(EmitInstruction(store.Target));
+
+                bytecode.AddRange(store.Offset switch
+                {
+                    IRProperty property => [(byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned(property.Offset)],
+                    _ => throw ErrorHandler.CreateNotImplimented($"Storing to offset of type '{store.Offset.GetType().FullName}' is not supported")
+                });
+
+                bytecode.Add((byte)WasmInstructions.I32_add);
+                bytecode.AddRange(EmitInstruction(store.Value));
+
+                bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
+
+                return bytecode.ToArray();
+            }
+
+            switch (store.Target)
+            {
+                case IRLocal local:
+                    return local.IsMutable ? [.. EmitInstruction(store.Value), (byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(local.Offset)] : throw ErrorHandler.Create($"Cannot emit store on immutable local \"{local.Name}\"");
+
+                case IRGlobal global:
+                    return global.IsMutable ? [.. EmitInstruction(store.Value), (byte)WasmInstructions.Global_set, .. LEB128.EncodeUnsigned(global.Offset)] : throw ErrorHandler.Create($"Cannot emit store on immutable global \"{global.Name}\"");
+
+                default:
+                    bytecode.AddRange(EmitInstruction(store.Target));
+                    break;
+            }
+
+
+            bytecode.Add((byte)WasmInstructions.I32_store);
 
             return bytecode.ToArray();
         }
@@ -176,13 +222,36 @@ namespace CommonIR.Generators.WASM.Emit
         {
             List<byte> bytecode = [];
 
-            bytecode.AddRange(load.Target switch
+            if(load.Offset != null)
             {
-                _ => throw ErrorHandler.CreateNotImplimented($"Load targeting \"{load.Target}\" is not yet implimented.")
-            });
+                bytecode.AddRange(EmitInstruction(load.Target));
 
-            return bytecode.ToArray();
+                bytecode.AddRange(load.Offset switch
+                {
+                    IRProperty property => [(byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned(property.Offset)],
+                    _ => throw ErrorHandler.CreateNotImplimented($"Loading from offset of type '{load.Offset.GetType().FullName}' is not supported")
+                });
+
+                bytecode.Add((byte)WasmInstructions.I32_add);
+
+                bytecode.AddRange([(byte)WasmInstructions.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
+
+                return bytecode.ToArray();
+            }
+
+            switch(load.Target)
+            {
+                case IRLocal local:
+                    return EmitLoadLocal(local);
+
+                case IRGlobal global:
+                    return EmitLoadGlobal(global);
+
+                default:
+                    throw ErrorHandler.CreateNotImplimented($"Load targeting \"{load.Target}\" is not yet implimented.");
+            }
         }
+
 
         public byte[] EmitReturn(IRReturn ret) // Note: Complete proper return handling (as WASM requires leftover value(s) on the stack as the return).
         {

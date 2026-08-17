@@ -14,8 +14,9 @@ namespace CommonIR.Generators.WASM.Translation
             WasmModule wasmModule = new WasmModule();
 
             WasmMemoryFunctionEmitter memoryFunctionEmitter = new WasmMemoryFunctionEmitter(module);
-            IRFunction malloc = memoryFunctionEmitter.EmitMalloc();
-            IRFunction free = memoryFunctionEmitter.EmitFree();
+            IRGlobal heapPointer = memoryFunctionEmitter.EmitHeapPointer();
+            IRFunction malloc = memoryFunctionEmitter.EmitMalloc(heapPointer);
+            IRFunction free = memoryFunctionEmitter.EmitFree(heapPointer);
 
             WasmSectionTranslator objectTranslator = new WasmSectionTranslator(module, malloc, free);
             wasmModule.Sections.AddRange(objectTranslator.TranslateSections());

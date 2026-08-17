@@ -29,10 +29,7 @@ namespace CommonIR.Generators.WASM.Translation
         // You can see the order of the sections in WasmSectionIDs. the data section is translated before the code section to handle forward references.
         public List<WasmSection> TranslateSections()
         {
-            WasmDataSection dataSection = TranslateDataSection();
-            WasmCodeSection codeSection = TranslateCodeSection();
-
-            return new List<WasmSection>()
+            List<WasmSection> sections = new List<WasmSection>()
             {
                 TranslateTypeSection(),
                 TranslateImportSection(),
@@ -41,9 +38,15 @@ namespace CommonIR.Generators.WASM.Translation
                 TranslateGlobalSection(),
                 TranslateExportSection(),
                 TranslateStartSection(),
-                codeSection,
-                dataSection,
             };
+
+            WasmDataSection dataSection = TranslateDataSection();
+            WasmCodeSection codeSection = TranslateCodeSection();
+
+            sections.Add(codeSection);
+            sections.Add(dataSection);
+
+            return sections;
         }
 
         private WasmTypeSection TranslateTypeSection()
@@ -241,9 +244,9 @@ namespace CommonIR.Generators.WASM.Translation
         {
             WasmDataSection dataSection = new WasmDataSection();
             ulong currentMemoryAddress = 0;
-            var irStrings = this.Module.Constants.OfType<IRString>().ToList();
+            var irStrings = this.Module.Objects.OfType<IRString>().ToList();
 
-            foreach (IRString irString in irStrings) // Maybe a mistake using pascal strings instead of fat pointers, but time will tell.
+            foreach (IRString irString in irStrings)
             {
                 byte[] stringBytes = System.Text.Encoding.UTF8.GetBytes(irString.Value);
                 uint stringLength = (uint)stringBytes.Length;

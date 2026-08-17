@@ -296,6 +296,19 @@ namespace CommonIR.IR
         }
 
         /// <summary>
+        /// Builds a load to a given targets pointer with the given offset.
+        /// <para>If the target is an IRObject (such as IRLocal, IRGlobal), a pointer will be fetched from the object, then the pointer + offset will be loaded from memory. If an integer is specified (Such as IRConstantInteger), this will be treated as a memory address + the offset and a value will be loaded from that address in memory.</para>
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildLoad(IRValueInstruction target, IRValueInstruction offset)
+        {
+            IRValueInstruction load = new IRLoad(target, offset);
+            return load;
+        }
+
+        /// <summary>
         /// Builds a store to a given target with the given value.
         /// <para>If the target is an IRObject (such as IRLocal, IRGlobal), data will be stored to their respective locations. If an integer is specified (Such as IRConstantInteger), this will be treated as a memory address and the value will be stored</para>
         /// </summary>
@@ -305,6 +318,21 @@ namespace CommonIR.IR
         public IRVoidInstruction BuildStore(IRValueInstruction target, IRValueInstruction value)
         {
             IRVoidInstruction store = new IRStore(target, value);
+            InsertVoidInstruction(store);
+            return store;
+        }
+
+        /// <summary>
+        /// Builds a store to a given target with the given offset with the given value.
+        /// <para>If the target is an IRObject (such as IRLocal, IRGlobal), data will be stored to their respective locations. If an integer is specified (Such as IRConstantInteger), this will be treated as a memory address and the value will be stored</para>
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="offset"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public IRVoidInstruction BuildStore(IRValueInstruction target, IRValueInstruction offset, IRValueInstruction value)
+        {
+            IRVoidInstruction store = new IRStore(target, offset, value);
             InsertVoidInstruction(store);
             return store;
         }
@@ -359,6 +387,68 @@ namespace CommonIR.IR
         {
             IRValueInstruction _string = this.Module.CreateString(value);
             return _string;
+        }
+
+        /// <summary>
+        /// Builds a new array declared with specified values.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="size"></param>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildArray(IRType type, IRValueInstruction size, List<IRValueInstruction> values)
+        {
+            IRValueInstruction array = new IRArray(type, size, values);
+            return array;
+        }
+
+        /// <summary>
+        /// Builds a new array of specified size.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildArray(IRType type, IRValueInstruction size)
+        {
+            IRValueInstruction array = new IRArray(type, size);
+            return array;
+        }
+
+        /// <summary>
+        /// Inserts raw bytes at this instructions position, returning a value.
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <param name="type">The type of the return, if any</param>
+        /// <returns></returns>
+        public IRInstruction BuildBytes(byte[] bytes, IRType type)
+        {
+            IRInstruction irbytes = new IRBytes(bytes, type);
+            InsertInstruction(irbytes);
+            return irbytes;
+        }
+
+        /// <summary>
+        /// Inserts raw bytes at this instructions position.
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <param name="type">The type of the return, if any</param>
+        /// <returns></returns>
+        public IRInstruction BuildBytes(byte[] bytes)
+        {
+            IRInstruction irbytes = new IRBytes(bytes, new IRType(IRDataTypes.Void));
+            InsertInstruction(irbytes);
+            return irbytes;
+        }
+
+        /// <summary>
+        /// Allocates memory of specified byte count and returns a pointer to the starting position of the allocated memory.
+        /// </summary>
+        /// <param name="bytes"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildMalloc(IRValueInstruction bytes)
+        {
+            IRValueInstruction malloc = new IRMalloc(bytes);
+            return malloc;
         }
     }
 }

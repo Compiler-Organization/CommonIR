@@ -59,7 +59,8 @@ namespace CommonIR.IR.Grammar.Objects
 
         public string DumpDeclaration(int indentation)
         {
-            return $"{new string('\t', indentation)}global %{this.Name} : {this.ValueType.Dump(0)} = {this.InitialValue.Dump(0)}";
+            return $"{new string('\t', indentation)}global %{this.Name} : {this.ValueType.Dump(0)} = {this.InitialValue.Dump(0)}" 
+                + (LengthCompanion == null ? "" : $"\n{new string('\t', indentation)}global [{this.Offset}] %{this.LengthCompanion.Name} : {this.LengthCompanion.ValueType.Dump(0)} = {this.LengthCompanion.InitialValue.Dump(0)}");
         }
 
         public string Dump(int indentation)

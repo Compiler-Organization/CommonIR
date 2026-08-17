@@ -51,7 +51,7 @@ namespace CommonIR.IR.Grammar.Objects
             IRDataTypes.Pointer
             or IRDataTypes.String
             or IRDataTypes.Array
-            or IRDataTypes.UserObject => 4,
+            or IRDataTypes.UserObject => 8,
 
             _ => throw ErrorHandler.Create($"Cannot get size of {this.DataType} as it is not supported."),
         };

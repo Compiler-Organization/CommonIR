@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
 	<PackageId>CommonIR</PackageId>
-	<Version>1.1.3</Version>
+	<Version>1.1.4</Version>
 	<Authors>Draugr-official</Authors>
 	<Company>Compiler Organization</Company>
 	<Description>Generic IR to support a variety of different targets, such as WASM, x8664, and other modern architectures.</Description>
@@ -14,7 +14,7 @@
 	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-	<PackageReleaseNotes>Fixed some issues with how IRCalls were handled internally. Can now be cast to IRValueInstruction if returning a value.</PackageReleaseNotes>
+	<PackageReleaseNotes>Wasm target now supports a primitive allocation system for, currently, structs only with int32 properties.</PackageReleaseNotes>
 	<PackageProjectUrl>https://github.com/Compiler-Organization/CommonIR</PackageProjectUrl>
 	<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>

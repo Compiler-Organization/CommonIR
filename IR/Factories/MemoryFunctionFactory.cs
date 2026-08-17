@@ -23,7 +23,7 @@ namespace CommonIR.IR.Factories
 
         public IRFunction CreateMalloc()
         {
-            return this.Module.CreateFunction("__malloc", [new IRType(IRDataTypes.Int32)], [new IRLocal(new IRType(IRDataTypes.Int32), false)], isExport: true);
+            return this.Module.CreateFunction("__malloc", [new IRType(IRDataTypes.Int32)], [new IRLocal("bytes", new IRType(IRDataTypes.Int32), false)], isExport: true);
         }
 
         public IRFunction CreateFree()

@@ -16,6 +16,11 @@ namespace CommonIR.IR.Grammar.Instructions.Memory
         /// </summary>
         public IRValueInstruction Target { get; set; }
 
+        /// <summary>
+        /// The offset to the loaded off the target. If the offset is not specified, loads the target itself.
+        /// </summary>
+        public IRValueInstruction? Offset { get; set; }
+
         public IRType ValueType { get; set; }
 
         public IRLoad(IRValueInstruction target)
@@ -25,6 +30,19 @@ namespace CommonIR.IR.Grammar.Instructions.Memory
 
             target.References.Add(this);
             this.Operands.Add(target);
+        }
+
+        public IRLoad(IRValueInstruction target, IRValueInstruction offset)
+        {
+            this.Target = target;
+            this.Offset = offset;
+            this.ValueType = offset.ValueType;
+
+            target.References.Add(this);
+            offset.References.Add(this);
+
+            this.Operands.Add(target);
+            this.Operands.Add(offset);
         }
 
         public string Dump(int indentation)

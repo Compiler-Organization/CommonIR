@@ -143,7 +143,7 @@ namespace CommonIR.IR.Grammar.Objects
 
         public string Dump(int indentation)
         {
-            return $"{new string('\t', indentation)}{(this.IsExport ? "export " : "")}function {this.Name}({string.Join(", ", Parameters.Select(p => p.Dump(0)))}) : ({string.Join(", ", ReturnTypes.Select(r => r.Dump(0)))}) \n{new string('\t', indentation)}{{\n{this.Entryblock.Dump(indentation + 1)}\n{new string('\t', indentation)}}}";
+            return $"{new string('\t', indentation)}{(this.IsExport ? "export " : "")}function [{this.Offset}] {this.Name}({string.Join(", ", Parameters.Select(p => p.Dump(0)))}) : ({string.Join(", ", ReturnTypes.Select(r => r.Dump(0)))}) \n{new string('\t', indentation)}{{\n{this.Entryblock.Dump(indentation + 1)}\n{new string('\t', indentation)}}}";
         }
     }
 }

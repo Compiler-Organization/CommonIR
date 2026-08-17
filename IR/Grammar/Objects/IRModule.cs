@@ -12,7 +12,7 @@ namespace CommonIR.IR.Grammar.Objects
 
         public List<IRFunctionImport> FunctionImports { get; set; }
 
-        public List<IRObject> Constants { get; set; }
+        public List<IRObject> Objects { get; set; }
         private ulong ConstantsSize { get; set; } = 0;
         private const int Alignment = 4;
 
@@ -28,7 +28,7 @@ namespace CommonIR.IR.Grammar.Objects
             this.Globals = new List<IRGlobal>();
             this.Functions = new List<IRFunction>();
             this.FunctionImports = new List<IRFunctionImport>();
-            this.Constants = new List<IRObject>();
+            this.Objects = new List<IRObject>();
         }
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace CommonIR.IR.Grammar.Objects
         }
 
         /// <summary>
-        /// Creates a string, adds it to the modules constants and returns it
+        /// Creates a string, adds it to the modules objects and returns it
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
@@ -120,15 +120,83 @@ namespace CommonIR.IR.Grammar.Objects
             {
                 Parent = this,
                 //Offset = ConstantsSize
-                Offset = (ulong)this.Constants.Count
+                Offset = (ulong)this.Objects.Count
             };
 
-            this.Constants.Add(_string);
+            this.Objects.Add(_string);
 
             //ConstantsSize += (ulong)Encoding.UTF8.GetBytes(value).LongLength;
             //ConstantsSize = (ConstantsSize + (Alignment - 1)) & ~(ulong)(Alignment - 1);
 
             return _string;
+        }
+
+        /// <summary>
+        /// Creates an array, adds it to the modules objects and returns it.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public IRArray CreateArray(IRType type, IRValueInstruction size)
+        {
+            IRArray array = new IRArray(type, size)
+            {
+                Parent = this,
+            };
+
+            this.Objects.Add(array);
+
+            return array;
+        }
+
+        /// <summary>
+        /// Creates an array with elements, adds it to the modules objects and returns it.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="size"></param>
+        /// <param name="elements"></param>
+        /// <returns></returns>
+        public IRArray CreateArray(IRType type, IRValueInstruction size, List<IRValueInstruction> elements)
+        {
+            IRArray array = new IRArray(type, size, elements)
+            {
+                Parent = this,
+            };
+
+            this.Objects.Add(array);
+
+            return array;
+        }
+
+        /// <summary>
+        /// Creates a named struct with no properties ,adds it to the moduels constants and returns it.
+        /// </summary>
+        /// <returns></returns>
+        public IRStruct CreateStruct(string name)
+        {
+            IRStruct _struct = new IRStruct(name, new List<IRProperty>())
+            {
+                Parent = this,
+            };
+            this.Objects.Add(_struct);
+
+            return _struct;
+        }
+
+        /// <summary>
+        /// Creates a named struct with the given properties, adds it to the modules constants and returns it.
+        /// </summary>
+        /// <param name="properties"></param>
+        /// <returns></returns>
+        public IRStruct CreateStruct(string name, List<IRProperty> properties)
+        {
+            IRStruct _struct = new IRStruct(name, properties) 
+            {
+                Parent = this,
+            };
+            this.Objects.Add(_struct);
+
+            return _struct;
         }
 
         /// <summary>
