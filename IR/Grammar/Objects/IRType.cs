@@ -77,5 +77,20 @@ namespace CommonIR.IR.Grammar.Objects
                 return $"{new string('\t', indentation)}{DataType.ToString()}";
             }
         }
+
+        public static bool operator ==(IRType? left, IRType? right)
+        {
+            if (ReferenceEquals(left, right)) return true;
+            if (left is null || right is null) return false;
+
+            if (left.DataType != right.DataType) return false;
+
+            return left.UserObject != null
+                && right.UserObject != null
+                && left.UserObject.Equals(right.UserObject);
+        }
+
+
+        public static bool operator !=(IRType? left, IRType? right) => !(left == right);
     }
 }

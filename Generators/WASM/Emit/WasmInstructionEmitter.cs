@@ -19,14 +19,24 @@ namespace CommonIR.Generators.WASM.Emit
     {
         private Stack<IRBlock> BlockContextStack = new Stack<IRBlock>();
 
+        IRFunction? Function { get; set; }
+
+        WasmScratchPool? ScratchPool { get; set; }
+
         IRFunction Malloc { get; set; }
 
         IRFunction Free { get; set; }
 
-        public WasmInstructionEmitter(IRFunction malloc, IRFunction free)
+        public WasmInstructionEmitter(IRFunction? function, IRFunction malloc, IRFunction free)
         {
+            this.Function = function;
             this.Malloc = malloc;
             this.Free = free;
+
+            if(function != null)
+            {
+                this.ScratchPool = new WasmScratchPool(function);
+            }
         }
 
         public List<byte> EmitInstructions(List<IRInstruction> instructions)
@@ -169,14 +179,14 @@ namespace CommonIR.Generators.WASM.Emit
         public byte[] EmitLoadString(IRString str)
         {
             List<byte> bytecode = [
-                (byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned((int)str.Offset),
-                (byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned(Encoding.UTF8.GetBytes(str.Value).LongLength)
+                (byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned(Encoding.UTF8.GetBytes(str.Value).LongLength),
+                (byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned((int)str.Offset)
             ];
 
             return bytecode.ToArray();
         }
 
-        public byte[] EmitStore(IRStore store) // TODO: fix this suddenly not emitting instructions for multiply, etc
+        public byte[] EmitStore(IRStore store)
         {
             List<byte> bytecode = [];
 
@@ -185,16 +195,40 @@ namespace CommonIR.Generators.WASM.Emit
             {
                 bytecode.AddRange(EmitInstruction(store.Target));
 
-                bytecode.AddRange(store.Offset switch
+                ulong offset = store.Offset switch
                 {
-                    IRProperty property => [(byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned(property.Offset)],
+                    IRProperty property => (ulong)property.Offset,
                     _ => throw ErrorHandler.CreateNotImplimented($"Storing to offset of type '{store.Offset.GetType().FullName}' is not supported")
-                });
+                };
 
-                bytecode.Add((byte)WasmInstructions.I32_add);
-                bytecode.AddRange(EmitInstruction(store.Value));
+                if(store.Offset.ValueType.IsReferenceType)
+                {
+                    if (this.Function == null)
+                    {
+                        throw ErrorHandler.Create($"Emitted store must belong to a function: {store.Dump(0)}");
+                    }
 
-                bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
+                    IRLocal length = ScratchPool!.Borrow(IRDataTypes.Int32);
+                    IRLocal pointer = ScratchPool!.Borrow(IRDataTypes.Int32);
+
+                    bytecode.AddRange([(byte)WasmInstructions.Local_tee, .. LEB128.EncodeUnsigned(pointer.Offset)]);
+
+                    bytecode.AddRange(EmitInstruction(store.Value));
+                    bytecode.AddRange([(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(length.Offset)]);
+                    bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(offset)]);
+
+                    bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(pointer.Offset)]);
+                    bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(length.Offset)]);
+                    bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(offset + 4)]);
+
+                    ScratchPool!.Return(length);
+                    ScratchPool!.Return(pointer);
+                }
+                else
+                {
+                    bytecode.AddRange(EmitInstruction(store.Value));
+                    bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(offset)]);
+                }
 
                 return bytecode.ToArray();
             }
@@ -226,15 +260,33 @@ namespace CommonIR.Generators.WASM.Emit
             {
                 bytecode.AddRange(EmitInstruction(load.Target));
 
-                bytecode.AddRange(load.Offset switch
+                ulong offset = load.Offset switch
                 {
-                    IRProperty property => [(byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned(property.Offset)],
+                    IRProperty property => (ulong)property.Offset,
                     _ => throw ErrorHandler.CreateNotImplimented($"Loading from offset of type '{load.Offset.GetType().FullName}' is not supported")
-                });
+                };
 
-                bytecode.Add((byte)WasmInstructions.I32_add);
+                if (load.Offset.ValueType.IsReferenceType)
+                {
+                    if (this.Function == null)
+                    {
+                        throw ErrorHandler.Create($"Emitted load must belong to a function: {load.Dump(0)}");
+                    }
 
-                bytecode.AddRange([(byte)WasmInstructions.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
+                    IRLocal target = ScratchPool!.Borrow(IRDataTypes.Int32);
+
+                    bytecode.AddRange([(byte)WasmInstructions.Local_tee, .. LEB128.EncodeUnsigned(target.Offset)]);
+                    bytecode.AddRange([(byte)WasmInstructions.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(offset + 4)]);
+
+                    bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(target.Offset)]);
+                    bytecode.AddRange([(byte)WasmInstructions.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(offset)]);
+
+                    ScratchPool!.Return(target);
+                }
+                else
+                {
+                    bytecode.AddRange([(byte)WasmInstructions.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(offset)]);
+                }
 
                 return bytecode.ToArray();
             }

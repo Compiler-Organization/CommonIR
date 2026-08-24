@@ -39,7 +39,7 @@ namespace CommonIR.IR.Grammar.Objects
 
         public string Dump(int indentation)
         {
-            return $"{new string('\t', indentation)} struct";
+            return $"{new string('\t', indentation)}property [{this.Index}] ({this.Name})";
         }
     }
 }

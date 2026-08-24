@@ -120,6 +120,24 @@ namespace CommonIR.IR.Grammar.Objects
         }
 
         /// <summary>
+        /// Attempts to find an exact match, if none, creates a new local with the given parameters and adds it to the function.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="type"></param>
+        /// <param name="isMutable"></param>
+        /// <returns></returns>
+        public IRLocal GetOrCreateLocal(string name, IRType type, bool isMutable)
+        {
+            List<IRLocal> locals = this.Locals.Where(l => l.Name == name && l.ValueType == type && l.IsMutable == isMutable).ToList();
+            if(locals.Count > 0)
+            {
+                return locals.First();
+            }
+
+            return CreateLocal(name, type, isMutable);
+        }
+
+        /// <summary>
         /// Creates a block and adds it to the functions block pool.
         /// </summary>
         /// <param name="name"></param>

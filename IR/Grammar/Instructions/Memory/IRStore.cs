@@ -51,7 +51,7 @@ namespace CommonIR.IR.Grammar.Instructions.Memory
 
         public string Dump(int indentation)
         {
-            return $"{new string('\t', indentation)}store ({this.Target.Dump(0)}){(this.Offset == null ? "" : $"->{this.Offset.Dump(0)}")} = ({this.Value.Dump(0)})";
+            return $"{new string('\t', indentation)}store ({this.Target.Dump(0)}){(this.Offset == null ? "" : $" -> {this.Offset.Dump(0)}")} = ({this.Value.Dump(0)})";
         }
     }
 }

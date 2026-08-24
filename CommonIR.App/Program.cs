@@ -57,24 +57,22 @@ namespace CommonIR.App
         static void BuildDataApp(IRModule module)
         {
             (IRFunction function, IRBuilder builder) = SetUpInterface(module);
-            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.Int32, isMutable: false)]);
+            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.String, isMutable: false)]);
 
 
             IRStruct _struct = module.CreateStruct("testStruct");
-            IRProperty property = _struct.AddProperty(new IRType(IRDataTypes.Int32), "num");
+            IRProperty property = _struct.AddProperty(new IRType(IRDataTypes.String), "num");
 
-            // TODO: Add startup function which allocates structs and assigns properties in the heap, and other stuff like arrays and user-types
             // creating and storing to a struct
             IRLocal newStruct = function.CreateLocal("newStruct", new IRType(IRDataTypes.UserObject), isMutable: true);
             IRValueInstruction malloc = builder.BuildMalloc(builder.BuildConstantInteger(IRDataTypes.Int32, _struct.Width));
 
             builder.BuildStore(newStruct, malloc);
-            builder.BuildStore(newStruct, property, builder.BuildConstantInteger(IRDataTypes.Int32, 42));
+            builder.BuildStore(newStruct, property, builder.BuildString("Hello, world!"));
 
             // loading from a struct
             IRValueInstruction loadedProperty = builder.BuildLoad(newStruct, property);
             builder.BuildCall(consoleLogImport, [loadedProperty]);
-            builder.BuildCall(consoleLogImport, [malloc]);
             builder.BuildReturn();
         }
 

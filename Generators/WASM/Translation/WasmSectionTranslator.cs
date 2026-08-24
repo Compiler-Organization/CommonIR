@@ -4,6 +4,7 @@ using CommonIR.Generators.WASM.Model;
 using CommonIR.Generators.WASM.Model.Sections;
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Objects;
+using System.Text;
 
 namespace CommonIR.Generators.WASM.Translation
 {
@@ -136,7 +137,7 @@ namespace CommonIR.Generators.WASM.Translation
                     IsMutable = global.IsMutable,
                     Type = WasmTypeTranslator.TranslateIRType(global.ValueType),
                     InitializationExpression = [
-                        .. new WasmInstructionEmitter(this.Malloc, this.Free).EmitInstruction(global.InitialValue), 
+                        .. new WasmInstructionEmitter(this.Module.EntryPoint ?? null, this.Malloc, this.Free).EmitInstruction(global.InitialValue), 
                         (byte)WasmInstructions.End
                     ]
                 };
@@ -188,10 +189,10 @@ namespace CommonIR.Generators.WASM.Translation
         private WasmCodeSection TranslateCodeSection()
         {
             WasmCodeSection codeSection = new WasmCodeSection();
-            WasmInstructionEmitter instructionEmitter = new WasmInstructionEmitter(this.Malloc, this.Free);
 
             foreach (IRFunction function in Module.Functions)
             {
+                WasmInstructionEmitter instructionEmitter = new WasmInstructionEmitter(function, this.Malloc, this.Free);
                 List<byte> bodyBytes = instructionEmitter.EmitInstructions(function.Entryblock.Instructions);
 
                 bodyBytes.Add((byte)WasmInstructions.End);
@@ -248,12 +249,7 @@ namespace CommonIR.Generators.WASM.Translation
 
             foreach (IRString irString in irStrings)
             {
-                byte[] stringBytes = System.Text.Encoding.UTF8.GetBytes(irString.Value);
-                uint stringLength = (uint)stringBytes.Length;
-
-                byte[] lengthBytes = BitConverter.GetBytes(stringLength);
-
-                List<byte> totalSegmentData = [.. stringBytes];
+                List<byte> totalSegmentData = [.. Encoding.UTF8.GetBytes(irString.Value)];
 
                 irString.Offset = currentMemoryAddress;
 

@@ -26,7 +26,9 @@ namespace CommonIR.Generators.WASM.Emit
         // TODO: Calculate the size of data loaded into heap at start, set the heap pointer to the last location.
         public IRGlobal EmitHeapPointer()
         {
-            return this.MemoryFunctionFactory.CreateHeapPointer();
+            IRGlobal heapPointer = this.MemoryFunctionFactory.CreateHeapPointer();
+            heapPointer.InitialValue = new IRConstantInteger(IRDataTypes.Int32, (long)this.Module.ConstantsSize);
+            return heapPointer;
         }
 
         public IRFunction EmitMalloc(IRGlobal heapPointer) // TODO: Impliment an actual malloc, with blocks and all of that.

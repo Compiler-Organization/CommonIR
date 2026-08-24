@@ -13,8 +13,8 @@ namespace CommonIR.IR.Grammar.Objects
         public List<IRFunctionImport> FunctionImports { get; set; }
 
         public List<IRObject> Objects { get; set; }
-        private ulong ConstantsSize { get; set; } = 0;
-        private const int Alignment = 4;
+
+        public ulong ConstantsSize { get; set; } = 0; // TODO: Write a better and more comprehensive calculation of constant size, which will be used when creating a heap pointer for certain architectures.
 
         public IRFunction? EntryPoint { get; set; }
 
@@ -125,7 +125,7 @@ namespace CommonIR.IR.Grammar.Objects
 
             this.Objects.Add(_string);
 
-            //ConstantsSize += (ulong)Encoding.UTF8.GetBytes(value).LongLength;
+            this.ConstantsSize += (ulong)Encoding.UTF8.GetBytes(value).LongLength;
             //ConstantsSize = (ConstantsSize + (Alignment - 1)) & ~(ulong)(Alignment - 1);
 
             return _string;
