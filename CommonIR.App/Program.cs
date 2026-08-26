@@ -57,22 +57,31 @@ namespace CommonIR.App
         static void BuildDataApp(IRModule module)
         {
             (IRFunction function, IRBuilder builder) = SetUpInterface(module);
-            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.String, isMutable: false)]);
+            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.Int32, isMutable: false)]);
 
 
-            IRStruct _struct = module.CreateStruct("testStruct");
-            IRProperty property = _struct.AddProperty(new IRType(IRDataTypes.String), "num");
+            //IRStruct _struct = module.CreateStruct("testStruct");
+            //IRProperty property = _struct.AddProperty(new IRType(IRDataTypes.String), "num");
 
-            // creating and storing to a struct
-            IRLocal newStruct = function.CreateLocal("newStruct", new IRType(IRDataTypes.UserObject), isMutable: true);
-            IRValueInstruction malloc = builder.BuildMalloc(builder.BuildConstantInteger(IRDataTypes.Int32, _struct.Width));
+            //// creating and storing to a struct
+            //IRLocal newStruct = function.CreateLocal("newStruct", new IRType(IRDataTypes.UserObject), isMutable: true);
+            //IRValueInstruction malloc = builder.BuildMalloc(builder.BuildConstantInteger(IRDataTypes.Int32, _struct.Width));
 
-            builder.BuildStore(newStruct, malloc);
-            builder.BuildStore(builder.BuildLoad(newStruct), property, builder.BuildString("Hello, world!"));
+            //builder.BuildStore(newStruct, malloc);
+            //builder.BuildStore(builder.BuildLoad(newStruct), property, builder.BuildString("Hello, world!"));
 
-            // loading from a struct
-            IRValueInstruction loadedProperty = builder.BuildLoad(newStruct, property);
-            builder.BuildCall(consoleLogImport, [loadedProperty]);
+            //// loading from a struct
+            //IRValueInstruction loadedProperty = builder.BuildLoad(newStruct, property);
+            //builder.BuildCall(consoleLogImport, [loadedProperty]);
+
+            IRValueInstruction malloc1 = builder.BuildMalloc(builder.BuildConstantInteger(IRDataTypes.Int32, 16));
+            
+            IRLocal temp = function.CreateLocal("temp", new IRType(IRDataTypes.Int32), isMutable: true);
+            builder.BuildStore(temp, malloc1);
+            builder.BuildStore(builder.BuildLoad(temp), builder.BuildConstantInteger(IRDataTypes.Int32, 0), builder.BuildConstantInteger(IRDataTypes.Int32, 0xFA_AA_AA_AA));
+
+            builder.BuildCall(consoleLogImport, [builder.BuildLoad(builder.BuildLoad(temp), builder.BuildConstantInteger(IRDataTypes.Int32, 0))]);
+
             builder.BuildReturn();
         }
 

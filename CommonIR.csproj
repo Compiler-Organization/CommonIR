@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
 	<PackageId>CommonIR</PackageId>
-	<Version>1.1.5</Version>
+	<Version>1.1.6</Version>
 	<Authors>Draugr-official</Authors>
 	<Company>Compiler Organization</Company>
 	<Description>Generic IR to support a variety of different targets, such as WASM, x8664, and other modern architectures.</Description>
@@ -14,7 +14,7 @@
 	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-	<PackageReleaseNotes>Added a scratch allocator to the wasm target aswell as complete support for storing and loading fat pointers from and to structs (tested with strings only as of now). Wasm heap pointer now properly aligns with initial constants.</PackageReleaseNotes>
+	<PackageReleaseNotes>Rewrote IRBuilder.BuildLoad and IRBuilder.BuildStore to make more architectual sense. Prettier code works better!</PackageReleaseNotes>
 	<PackageProjectUrl>https://github.com/Compiler-Organization/CommonIR</PackageProjectUrl>
 	<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
