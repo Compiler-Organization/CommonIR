@@ -51,6 +51,31 @@ namespace CommonIR.IR.Grammar.Objects
         }
 
         /// <summary>
+        /// Attempts to retrieve an exact matching function, if none was found, creates a function import, adds it to the module and returns it.
+        /// </summary>
+        /// <param name="moduleName"></param>
+        /// <param name="functionName"></param>
+        /// <param name="returnType"></param>
+        /// <param name="parameterTypes"></param>
+        /// <returns></returns>
+        public IRFunctionImport GetOrCreateFunctionImport(string moduleName, string functionName, IRType returnType, List<IRLocal> parameterTypes)
+        {
+            List<IRFunctionImport> functionImports = this.FunctionImports.Where(f => 
+                f.ModuleName == moduleName
+                && f.Name == functionName
+                && f.ReturnTypes.All(r => r == returnType)
+                && f.Parameters.All(p => parameterTypes.All(pt => pt.ValueType == p.ValueType))
+            ).ToList();
+
+            if(functionImports.Count > 0)
+            {
+                return functionImports.First();
+            }
+
+            return CreateFunctionImport(moduleName, functionName, returnType, parameterTypes);
+        }
+
+        /// <summary>
         /// Creates a function, adds it to the modules functions and returns it.
         /// </summary>
         /// <param name="name"></param>

@@ -68,7 +68,7 @@ namespace CommonIR.App
             IRValueInstruction malloc = builder.BuildMalloc(builder.BuildConstantInteger(IRDataTypes.Int32, _struct.Width));
 
             builder.BuildStore(newStruct, malloc);
-            builder.BuildStore(newStruct, property, builder.BuildString("Hello, world!"));
+            builder.BuildStore(builder.BuildLoad(newStruct), property, builder.BuildString("Hello, world!"));
 
             // loading from a struct
             IRValueInstruction loadedProperty = builder.BuildLoad(newStruct, property);

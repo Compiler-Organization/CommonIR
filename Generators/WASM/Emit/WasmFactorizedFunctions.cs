@@ -11,29 +11,53 @@ using System.Text;
 
 namespace CommonIR.Generators.WASM.Emit
 {
-    internal class WasmMemoryFunctionEmitter
+    internal class WasmFactorizedFunctions
     {
         IRModule Module { get; set; }
 
-        MemoryFunctionFactory MemoryFunctionFactory { get; set; }
+        FunctionFactory FunctionFactory { get; set; }
 
-        public WasmMemoryFunctionEmitter(IRModule module)
+        public IRGlobal HeapPointer { get; set; }
+        public IRFunction Malloc { get; set; }
+        public IRFunction Free { get; set; }
+        public IRFunction Panic { get; set; }
+
+        public WasmFactorizedFunctions(IRModule module)
         {
             this.Module = module;
-            this.MemoryFunctionFactory = new MemoryFunctionFactory(module);
+            this.FunctionFactory = new FunctionFactory(module);
+
+            this.HeapPointer = EmitHeapPointer();
+            this.Malloc = EmitMalloc(this.HeapPointer);
+            this.Free = EmitFree(this.HeapPointer);
+            this.Panic = EmitPanic();
         }
 
-        // TODO: Calculate the size of data loaded into heap at start, set the heap pointer to the last location.
-        public IRGlobal EmitHeapPointer()
+        IRGlobal EmitHeapPointer()
         {
-            IRGlobal heapPointer = this.MemoryFunctionFactory.CreateHeapPointer();
+            IRGlobal heapPointer = this.FunctionFactory.CreateHeapPointer();
             heapPointer.InitialValue = new IRConstantInteger(IRDataTypes.Int32, (long)this.Module.ConstantsSize);
             return heapPointer;
         }
 
-        public IRFunction EmitMalloc(IRGlobal heapPointer) // TODO: Impliment an actual malloc, with blocks and all of that.
+        IRFunction EmitPanic()
         {
-            IRFunction malloc = this.MemoryFunctionFactory.CreateMalloc();
+            IRFunction panic = this.FunctionFactory.CreatePanic();
+            IRLocal messageParameter = panic.Parameters.First();
+
+            IRFunction errorFunction = this.Module.GetOrCreateFunctionImport("console", "error", new IRType(IRDataTypes.Void), [new IRLocal("message", new IRType(IRDataTypes.String), true)]);
+
+            IRBuilder builder = new IRBuilder(Module, panic, panic.Entryblock);
+            IRValueInstruction errorString = builder.BuildLoad(messageParameter);
+            builder.BuildCall(errorFunction, [errorString]);
+            builder.BuildBytes([0x00]);
+
+            return panic;
+        }
+
+        IRFunction EmitMalloc(IRGlobal heapPointer) // TODO: Impliment an actual malloc, with blocks and all of that.
+        {
+            IRFunction malloc = this.FunctionFactory.CreateMalloc();
             IRLocal bytesParameter = malloc.Parameters.First();
             IRBuilder builder = new IRBuilder(Module, malloc, malloc.Entryblock);
 
@@ -73,9 +97,9 @@ namespace CommonIR.Generators.WASM.Emit
             return malloc;
         }
 
-        public IRFunction EmitFree(IRGlobal heapPointer)
+        IRFunction EmitFree(IRGlobal heapPointer)
         {
-            IRFunction free = this.MemoryFunctionFactory.CreateFree();
+            IRFunction free = this.FunctionFactory.CreateFree();
 
 
 

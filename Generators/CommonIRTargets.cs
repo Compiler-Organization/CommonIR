@@ -6,6 +6,6 @@ namespace CommonIR.Generators
 {
     public enum CommonIRTargets
     {
-        WebAssembly_1_0_MVP
+        WebAssembly_1_0_MVP,
     }
 }

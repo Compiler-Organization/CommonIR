@@ -13,12 +13,8 @@ namespace CommonIR.Generators.WASM.Translation
         {
             WasmModule wasmModule = new WasmModule();
 
-            WasmMemoryFunctionEmitter memoryFunctionEmitter = new WasmMemoryFunctionEmitter(module);
-            IRGlobal heapPointer = memoryFunctionEmitter.EmitHeapPointer();
-            IRFunction malloc = memoryFunctionEmitter.EmitMalloc(heapPointer);
-            IRFunction free = memoryFunctionEmitter.EmitFree(heapPointer);
-
-            WasmSectionTranslator objectTranslator = new WasmSectionTranslator(module, malloc, free);
+            WasmFactorizedFunctions factorizedFunctions = new WasmFactorizedFunctions(module);
+            WasmSectionTranslator objectTranslator = new WasmSectionTranslator(module, factorizedFunctions);
             wasmModule.Sections.AddRange(objectTranslator.TranslateSections());
 
             return wasmModule;

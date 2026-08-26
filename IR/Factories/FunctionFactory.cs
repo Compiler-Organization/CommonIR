@@ -7,11 +7,11 @@ using System.Text;
 
 namespace CommonIR.IR.Factories
 {
-    internal class MemoryFunctionFactory
+    internal class FunctionFactory
     {
         IRModule Module { get; set; }
 
-        public MemoryFunctionFactory(IRModule module) 
+        public FunctionFactory(IRModule module) 
         {
             this.Module = module;
         }
@@ -19,6 +19,11 @@ namespace CommonIR.IR.Factories
         public IRGlobal CreateHeapPointer()
         {
             return this.Module.CreateGlobal("__heap_ptr", new IRType(IRDataTypes.Int32), new IRConstantInteger(IRDataTypes.Int32, 0), isMutable: true);
+        }
+
+        public IRFunction CreatePanic()
+        {
+            return this.Module.CreateFunction("__panic", [], [new IRLocal("message", new IRType(IRDataTypes.String), false)], isExport: true);
         }
 
         public IRFunction CreateMalloc()

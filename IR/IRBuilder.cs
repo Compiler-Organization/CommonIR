@@ -450,5 +450,22 @@ namespace CommonIR.IR
             IRValueInstruction malloc = new IRMalloc(bytes);
             return malloc;
         }
+
+        /// <summary>
+        /// Writes the error message to the standard output and immediately exits.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        public IRVoidInstruction BuildPanic(IRValueInstruction message)
+        {
+            if(message.ValueType.DataType != IRDataTypes.String)
+            {
+                throw ErrorHandler.Create($"Expected message to be of type 'String', got '{message.ValueType.DataType}'");
+            }
+
+            IRVoidInstruction panic = new IRPanic(message);
+            InsertVoidInstruction(panic);
+            return panic;
+        }
     }
 }

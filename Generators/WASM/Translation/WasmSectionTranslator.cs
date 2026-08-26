@@ -15,15 +15,12 @@ namespace CommonIR.Generators.WASM.Translation
     {
         IRModule Module { get; set; }
 
-        IRFunction Malloc { get; set; }
+        WasmFactorizedFunctions FactorizedFunctions { get; set; }
 
-        IRFunction Free { get; set; }
-
-        public WasmSectionTranslator(IRModule module, IRFunction malloc, IRFunction free)
+        public WasmSectionTranslator(IRModule module, WasmFactorizedFunctions factorizedFunctions)
         {
             this.Module = module;
-            this.Malloc = malloc;
-            this.Free = free;
+            this.FactorizedFunctions = factorizedFunctions;
         }
 
         // NOTE: To anyone reading, each section needs to be in cronological order (except 0x00 custom), as the order of sections in a WASM module is important.
@@ -137,7 +134,7 @@ namespace CommonIR.Generators.WASM.Translation
                     IsMutable = global.IsMutable,
                     Type = WasmTypeTranslator.TranslateIRType(global.ValueType),
                     InitializationExpression = [
-                        .. new WasmInstructionEmitter(this.Module.EntryPoint ?? null, this.Malloc, this.Free).EmitInstruction(global.InitialValue), 
+                        .. new WasmInstructionEmitter(this.Module.EntryPoint ?? null, this.FactorizedFunctions).EmitInstruction(global.InitialValue), 
                         (byte)WasmInstructions.End
                     ]
                 };
@@ -192,7 +189,7 @@ namespace CommonIR.Generators.WASM.Translation
 
             foreach (IRFunction function in Module.Functions)
             {
-                WasmInstructionEmitter instructionEmitter = new WasmInstructionEmitter(function, this.Malloc, this.Free);
+                WasmInstructionEmitter instructionEmitter = new WasmInstructionEmitter(function, this.FactorizedFunctions);
                 List<byte> bodyBytes = instructionEmitter.EmitInstructions(function.Entryblock.Instructions);
 
                 bodyBytes.Add((byte)WasmInstructions.End);

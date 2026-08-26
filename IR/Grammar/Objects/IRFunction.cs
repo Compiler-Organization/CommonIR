@@ -109,13 +109,23 @@ namespace CommonIR.IR.Grammar.Objects
         /// <returns></returns>
         public IRLocal CreateLocal(string name, IRType type, bool isMutable)
         {
-            IRLocal local = new IRLocal(name, type, isMutable) 
+            IRLocal local = new IRLocal(name, type, isMutable)
             {
-                Parent = this
+                Parent = this,
+                Offset = (ulong)(Locals.Count + Parameters.Count)
             };
-
-            local.Offset = (ulong)(Locals.Count + Parameters.Count);
             Locals.Add(local);
+
+            if (type.IsReferenceType)
+            {
+                local.LengthCompanion = new IRLocal(new IRType(IRDataTypes.Int32), isMutable: true)
+                {
+                    Parent = local,
+                    Offset = (ulong)(Locals.Count + Parameters.Count),
+                };
+                Locals.Add(local.LengthCompanion);
+            }
+
             return local;
         }
 
