@@ -8,18 +8,21 @@
 
         public IRGrammar? Parent { get; set; }
 
-        public IRValueInstruction? Value { get; set; }
+        public List<IRValueInstruction>? Values { get; set; }
 
         /// <summary>
         /// Creates a return instruction with a return value.
         /// </summary>
         /// <param name="value"></param>
-        public IRReturn(IRValueInstruction value)
+        public IRReturn(List<IRValueInstruction> values)
         {
-            this.Value = value;
+            this.Values = values;
 
-            value.References.Add(this);
-            this.Operands.Add(value);
+            foreach(IRValueInstruction value in values)
+            {
+                value.References.Add(this);
+                this.Operands.Add(value);
+            }
         }
 
         /// <summary>
@@ -29,9 +32,9 @@
 
         public string Dump(int indentation)
         {
-            if (this.Value != null)
+            if (this.Values != null)
             {
-                return $"{new string('\t', indentation)}return ({this.Value.Dump(0)})";
+                return $"{new string('\t', indentation)}return {string.Join(", ", $"({this.Values.Select(v => v.Dump(0))})")}";
             }
             else
             {

@@ -27,7 +27,7 @@ namespace CommonIR.IR.Grammar.Objects
 
         /// <summary>
         /// Returns the amount of bytes required for the type.
-        /// <para>Returns 4 if the type is non-scalar (pointer)</para>
+        /// <para>Example: Pointer = 4, FatPointer = 8</para>
         /// </summary>
         /// <returns></returns>
         public int Width => this.DataType switch
@@ -49,9 +49,13 @@ namespace CommonIR.IR.Grammar.Objects
             IRDataTypes.Float64 => 8,
 
             IRDataTypes.Pointer
-            or IRDataTypes.String
+            or IRDataTypes.Struct => 4,
+
+            IRDataTypes.Array when this.UserObject is IRArray array && array.Size.IsConstant => 4,
+
+            IRDataTypes.FatPointer
             or IRDataTypes.Array
-            or IRDataTypes.UserObject => 8,
+            or IRDataTypes.String => 8,
 
             _ => throw ErrorHandler.Create($"Cannot get size of {this.DataType} as it is not supported."),
         };
@@ -60,9 +64,21 @@ namespace CommonIR.IR.Grammar.Objects
             => this.DataType switch
             {
                 IRDataTypes.Pointer
+                or IRDataTypes.FatPointer
                 or IRDataTypes.String
                 or IRDataTypes.Array
-                or IRDataTypes.UserObject => true,
+                or IRDataTypes.Struct => true,
+                _ => false,
+            };
+
+        public bool IsFatPointer
+            => this.DataType switch
+            {
+                IRDataTypes.FatPointer
+                or IRDataTypes.String => true,
+
+                IRDataTypes.Array when this.UserObject is IRArray array && !array.Size.IsConstant => true,
+
                 _ => false,
             };
 

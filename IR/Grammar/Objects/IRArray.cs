@@ -13,6 +13,7 @@ namespace CommonIR.IR.Grammar.Objects
         public bool IsVoid { get; } = false;
 
         public IRGrammar? Parent { get; set; }
+        public bool IsConstant { get; set; } = false;
 
         /// <summary>
         /// The type of the array.
@@ -29,9 +30,16 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         public List<IRValueInstruction> Elements { get; set; }
 
+        /// <summary>
+        /// The type of the declared elements.
+        /// </summary>
+        public IRType ElementType { get; set; }
+
         public IRArray(IRType type, IRValueInstruction size)
         {
-            this.ValueType = type;
+            this.ValueType = new IRType(IRDataTypes.Array, this);
+
+            this.ElementType = type;
             this.Size = size;
             this.Elements = new List<IRValueInstruction>();
 
@@ -41,7 +49,9 @@ namespace CommonIR.IR.Grammar.Objects
 
         public IRArray(IRType type, IRValueInstruction size, List<IRValueInstruction> elements)
         {
-            this.ValueType = type;
+            this.ValueType = new IRType(IRDataTypes.Array, this);
+            this.ElementType = type;
+
             this.Size = size;
             this.Elements = elements;
 

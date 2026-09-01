@@ -1,5 +1,5 @@
 ﻿using CommonIR.Errors;
-using CommonIR.Generators.WASM.Emit;
+using CommonIR.Generators.WASM.Emission;
 using CommonIR.Generators.WASM.Model;
 using CommonIR.Generators.WASM.Model.Sections;
 using CommonIR.IR.Grammar;
@@ -47,27 +47,84 @@ namespace CommonIR.Generators.WASM.Translation
             return sections;
         }
 
+        List<IRType> FlattenReturnTypes(List<IRType> returnTypes)
+        {
+            List<IRType> flattenedReturnTypes = new List<IRType>();
+
+            foreach (IRType retType in returnTypes)
+            {
+                if (retType.IsReferenceType)
+                {
+                    flattenedReturnTypes.Add(new IRType(IRDataTypes.Int32));
+                    flattenedReturnTypes.Add(new IRType(IRDataTypes.Int32));
+                }
+                else
+                {
+                    flattenedReturnTypes.Add(retType);
+                }
+            }
+            return flattenedReturnTypes;
+        }
+
+        List<IRLocal> FlattenParameters(List<IRLocal> parameters)
+        {
+            List<IRLocal> flattenedParameters = new List<IRLocal>();
+
+            foreach (IRLocal parameter in parameters)
+            {
+                if (parameter.ValueType.IsReferenceType)
+                {
+                    IRLocal aggregatePointer = new IRLocal($"{parameter.Name}_ptr", parameter.ValueType, parameter.IsMutable)
+                    {
+                        Offset = (ulong)flattenedParameters.Count
+                    };
+                    flattenedParameters.Add(aggregatePointer);
+
+                    IRLocal lengthCompanion = new IRLocal($"{parameter.Name}_len", new IRType(IRDataTypes.Int32), parameter.IsMutable)
+                    {
+                        Offset = (ulong)flattenedParameters.Count
+                    };
+                    flattenedParameters.Add(lengthCompanion);
+
+                    aggregatePointer.LengthCompanion = lengthCompanion;
+                }
+                else
+                {
+                    parameter.Offset = (ulong)flattenedParameters.Count;
+                    flattenedParameters.Add(parameter);
+                }
+            }
+
+            return flattenedParameters;
+        }
+
         private WasmTypeSection TranslateTypeSection()
         {
             WasmTypeSection typeSection = new WasmTypeSection();
             foreach (IRFunctionImport functionImport in this.Module.FunctionImports)
             {
+                List<IRType> returnTypes = FlattenReturnTypes(functionImport.ReturnTypes);
+                List<IRLocal> parameters = FlattenParameters(functionImport.Parameters);
+
                 typeSection.Types.Add(new WasmTypeSectionType
                 {
                     Form = WasmForms.Function,
-                    ParameterTypes = [.. functionImport.Parameters.Select(p => WasmTypeTranslator.TranslateIRType(p.ValueType))],
-                    Returns = [.. functionImport.ReturnTypes.Where(t => t.DataType != IRDataTypes.Void).Select(WasmTypeTranslator.TranslateIRType)]
+                    ParameterTypes = [.. parameters.Select(p => WasmTypeTranslator.TranslateIRType(p.ValueType))],
+                    Returns = [.. returnTypes.Where(t => t.DataType != IRDataTypes.Void).Select(WasmTypeTranslator.TranslateIRType)]
                 });
                 functionImport.Offset = (ulong)(typeSection.Types.Count - 1);
             }
 
             foreach (IRFunction function in this.Module.Functions)
             {
+                List<IRType> returnTypes = FlattenReturnTypes(function.ReturnTypes);
+                List<IRLocal> parameters = FlattenParameters(function.Parameters);
+
                 typeSection.Types.Add(new WasmTypeSectionType
                 {
                     Form = WasmForms.Function,
-                    ParameterTypes = [.. function.Parameters.Select(p => WasmTypeTranslator.TranslateIRType(p.ValueType))],
-                    Returns = [.. function.ReturnTypes.Where(t => t.DataType != IRDataTypes.Void).Select(WasmTypeTranslator.TranslateIRType)]
+                    ParameterTypes = [.. parameters.Select(p => WasmTypeTranslator.TranslateIRType(p.ValueType))],
+                    Returns = [.. returnTypes.Where(t => t.DataType != IRDataTypes.Void).Select(WasmTypeTranslator.TranslateIRType)]
                 });
                 function.Offset = (ulong)(typeSection.Types.Count - 1);
             }
@@ -160,25 +217,24 @@ namespace CommonIR.Generators.WASM.Translation
             return exportSection;
         }
 
-        private WasmStartSection TranslateStartSection() // TODO: Move this to the bindings generator - bad practice using the start section.
-                                                         // Could use the start sections for entrypoints with 0 returns and 0 parameters,
+        private WasmStartSection TranslateStartSection() // Could use the start sections for entrypoints with 0 returns and 0 parameters,
                                                          // if that saves a couple cycles...
         {
-            if (this.Module.EntryPoint != null)
-            {
-                if (this.Module.EntryPoint.HasReturn() || this.Module.EntryPoint.HasParameters())
-                {
-                    throw ErrorHandler.Create($"Entry point \"{this.Module.EntryPoint.Name}\" signature must have exactly 0 returns and 0 parameters!");
-                }
+            //if (this.Module.EntryPoint != null)
+            //{
+            //    if (this.Module.EntryPoint.HasReturn() || this.Module.EntryPoint.HasParameters())
+            //    {
+            //        throw ErrorHandler.Create($"Entry point \"{this.Module.EntryPoint.Name}\" signature must have exactly 0 returns and 0 parameters!");
+            //    }
 
-                WasmStartSection startSection = new WasmStartSection()
-                {
-                    StartFunctionIndex = this.Module.EntryPoint.Offset,
-                    IsSet = true,
-                };
+            //    WasmStartSection startSection = new WasmStartSection()
+            //    {
+            //        StartFunctionIndex = this.Module.EntryPoint.Offset,
+            //        IsSet = true,
+            //    };
 
-                return startSection;
-            }
+            //    return startSection;
+            //}
 
             return new WasmStartSection();
         }

@@ -13,6 +13,7 @@ namespace CommonIR.IR.Grammar.Instructions.ControlFlow
         public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
 
         public IRGrammar? Parent { get; set; }
+        public bool IsConstant { get; set; } = false;
 
         /// <summary>
         /// The function being called.

@@ -1,5 +1,7 @@
 ﻿using CommonIR.Errors;
 using CommonIR.IR.Grammar.Instructions;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Text;
 
 namespace CommonIR.IR.Grammar.Objects
@@ -21,6 +23,9 @@ namespace CommonIR.IR.Grammar.Objects
         public IRGrammar? Parent { get; set; }
 
         public string Name { get; set; }
+
+        internal ModuleBuilder? CILModule { get; set; }
+        internal TypeBuilder? CILType { get; set; }
 
         public IRModule(string name)
         {
@@ -102,7 +107,7 @@ namespace CommonIR.IR.Grammar.Objects
         /// <returns></returns>
         public IRGlobal CreateGlobal(string name, IRType type, IRValueInstruction initialValue, bool isMutable)
         {
-            if (type.IsReferenceType)
+            if (type.IsFatPointer)
             {
                 IRGlobal aggregatePointer = new IRGlobal($"{name}_ptr", type, initialValue, isMutable)
                 {

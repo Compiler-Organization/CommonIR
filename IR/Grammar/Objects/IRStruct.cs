@@ -14,6 +14,7 @@ namespace CommonIR.IR.Grammar.Objects
         public bool IsVoid { get; } = false;
 
         public IRGrammar? Parent { get; set; }
+        public bool IsConstant { get; set; } = false;
 
         /// <summary>
         /// The type of the struct.
@@ -32,7 +33,7 @@ namespace CommonIR.IR.Grammar.Objects
         public IRStruct(string name, List<IRProperty> properties)
         {
             this.Name = name;
-            this.ValueType = new IRType(IRDataTypes.UserObject, this);
+            this.ValueType = new IRType(IRDataTypes.Pointer, this);
             this.Properties = new List<IRProperty>();
 
             foreach(IRProperty property in properties)

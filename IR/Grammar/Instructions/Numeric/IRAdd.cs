@@ -14,6 +14,7 @@ namespace CommonIR.IR.Grammar.Instructions.Arithmetic
         public bool IsVoid { get; } = false;
 
         public IRGrammar? Parent { get; set; }
+        public bool IsConstant { get; set; } = false;
 
         /// <summary>
         /// The left side of the addition instruction.

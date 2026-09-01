@@ -8,6 +8,7 @@ namespace CommonIR.IR.Grammar.Instructions.Memory
 
         public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
         public bool IsVoid { get; } = false;
+        public bool IsConstant { get; set; } = false;
 
         public IRGrammar? Parent { get; set; }
 
@@ -23,18 +24,22 @@ namespace CommonIR.IR.Grammar.Instructions.Memory
 
         public IRType ValueType { get; set; }
 
-        public IRLoad(IRValueInstruction target)
+        public IRType TargetType { get; set; }
+
+        public IRLoad(IRValueInstruction target, IRType targetType)
         {
             this.Target = target;
+            this.TargetType = targetType;
             this.ValueType = target.ValueType;
 
             target.References.Add(this);
             this.Operands.Add(target);
         }
 
-        public IRLoad(IRValueInstruction target, IRValueInstruction offset)
+        public IRLoad(IRValueInstruction target, IRValueInstruction offset, IRType targetType)
         {
             this.Target = target;
+            this.TargetType = targetType;
             this.Offset = offset;
             this.ValueType = offset.ValueType;
 

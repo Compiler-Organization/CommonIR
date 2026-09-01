@@ -13,6 +13,7 @@ namespace CommonIR.IR.Grammar.Objects
         public bool IsVoid { get; } = false;
 
         public IRGrammar? Parent { get; set; }
+        public bool IsConstant { get; set; } = true;
 
         /// <summary>
         /// The value of the string literal
@@ -27,7 +28,7 @@ namespace CommonIR.IR.Grammar.Objects
         public IRString(string value)
         {
             this.Value = value;
-            this.ValueType = new IRType(IRDataTypes.String);
+            this.ValueType = new IRType(IRDataTypes.FatPointer);
         }
 
         /// <summary>

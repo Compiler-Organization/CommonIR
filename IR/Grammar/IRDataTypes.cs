@@ -79,9 +79,14 @@
         Pointer,
 
         /// <summary>
-        /// Represents a user-defined object (such as classes, structs, etc).
+        /// Represents a pointer to aggregates, aswell as a length companion.
         /// </summary>
-        UserObject,
+        FatPointer,
+
+        /// <summary>
+        /// Represents a fixed-size struct.
+        /// </summary>
+        Struct,
 
         /// <summary>
         /// Represents a vector of any size.

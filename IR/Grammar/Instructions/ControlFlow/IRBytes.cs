@@ -17,6 +17,8 @@ namespace CommonIR.IR.Grammar.Instructions.ControlFlow
 
         public byte[] Bytes { get; set; }
 
+        public bool IsConstant { get; set; } = false;
+
         public IRType ValueType { get; set; }
 
         /// <summary>

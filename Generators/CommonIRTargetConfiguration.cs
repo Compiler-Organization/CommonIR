@@ -4,9 +4,7 @@ using System.Text;
 
 namespace CommonIR.Generators
 {
-    public enum CommonIRTargets
+    public class CommonIRTargetConfiguration
     {
-        WebAssembly,
-        CommonIntermediateLanguage,
     }
 }

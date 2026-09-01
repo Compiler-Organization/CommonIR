@@ -25,7 +25,7 @@ namespace CommonIR.Generators.WASM.Bindings
 
         void EmitInit()
         {
-            Builder.AppendLine(WasmJSBindingsScripts.GetInitScript($"{this.Module.Name}_module.wasm", GenerateJSImportBindings()));
+            Builder.AppendLine(WasmJSBindingsScripts.GetInitScript(this.Module, $"{this.Module.Name}_module.wasm", GenerateJSImportBindings()));
         }
 
         void EmitFunctionBindings()
@@ -38,7 +38,7 @@ namespace CommonIR.Generators.WASM.Bindings
 
         string CreateJSFunctionExport(IRFunction function)
         {
-            string parameters = string.Join(", ", function.Parameters.Select(p => p.Name));
+            string parameters = ConvertParameters(function.Parameters);
             string arguments = WrapWithHelperReaders(function.Parameters);
 
             return $@"export function {function.Name}({parameters}) {{
@@ -57,7 +57,7 @@ namespace CommonIR.Generators.WASM.Bindings
 
                 foreach(IRFunctionImport importedFunction in importGroup)
                 {
-                    string parameters = string.Join(", ", importedFunction.Parameters.Select(p => p.Name));
+                    string parameters = ConvertParameters(importedFunction.Parameters);
                     string arguments = WrapWithHelperReaders(importedFunction.Parameters);
                     builder.Append($"       {importedFunction.Name}: ({parameters}) => {importedFunction.ModuleName}.{importedFunction.Name}({arguments}),\n");
                 }
@@ -68,6 +68,26 @@ namespace CommonIR.Generators.WASM.Bindings
             return builder.ToString();
         }
 
+        string ConvertParameters(List<IRLocal> parameters)
+        {
+            List<string> builder = new List<string>();
+
+            foreach(IRLocal parameter in parameters)
+            {
+                if(parameter.ValueType.IsFatPointer)
+                {
+                    builder.Add(parameter.Name);
+                    builder.Add(parameter.LengthCompanion.Name);
+                }
+                else
+                {
+                    builder.Add(parameter.Name);
+                }
+            }
+
+            return string.Join(", ", builder);
+        }
+
         string WrapWithHelperReaders(List<IRLocal> locals)
         {
             List<string> convertedLocals = new List<string>();
@@ -75,14 +95,14 @@ namespace CommonIR.Generators.WASM.Bindings
             for(int i = 0; i < locals.Count; i++)
             {
                 IRLocal local = locals[i];
-                if(local.ValueType.IsReferenceType)
+                if(local.ValueType.IsFatPointer)
                 {
                     if(local.LengthCompanion == null)
                     {
                         throw ErrorHandler.Create($"Length companion to fat pointer '{local.Name}' was never declared.");
                     }
 
-                    convertedLocals.Add(WrapWithHelperReader($"{local.Name}, {local.LengthCompanion.Name}", local.ValueType));
+                    convertedLocals.Add(WrapWithHelperReader($"{local.LengthCompanion.Name}, {local.Name}", local.ValueType));
                     
                     if(i + 1 < locals.Count && locals[i + 1] == local.LengthCompanion)
                     {

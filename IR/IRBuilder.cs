@@ -278,7 +278,19 @@ namespace CommonIR.IR
         /// <returns></returns>
         public IRVoidInstruction BuildReturn(IRValueInstruction value)
         {
-            IRReturn returnInstruction = new IRReturn(value);
+            IRReturn returnInstruction = new IRReturn([value]);
+            InsertVoidInstruction(returnInstruction);
+            return returnInstruction;
+        }
+
+        /// <summary>
+        /// Builds a return instruction with multiple return values.
+        /// </summary>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public IRVoidInstruction BuildReturn(List<IRValueInstruction> values)
+        {
+            IRReturn returnInstruction = new IRReturn(values);
             InsertVoidInstruction(returnInstruction);
             return returnInstruction;
         }
@@ -289,9 +301,9 @@ namespace CommonIR.IR
         /// </summary>
         /// <param name="target"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildLoad(IRValueInstruction target)
+        public IRValueInstruction BuildLoad(IRValueInstruction target, IRType targetType)
         {
-            IRValueInstruction load = new IRLoad(target);
+            IRValueInstruction load = new IRLoad(target, targetType);
             return load;
         }
 
@@ -302,9 +314,9 @@ namespace CommonIR.IR
         /// <param name="target"></param>
         /// <param name="offset"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildLoad(IRValueInstruction target, IRValueInstruction offset)
+        public IRValueInstruction BuildLoad(IRValueInstruction target, IRType targetType, IRValueInstruction offset)
         {
-            IRValueInstruction load = new IRLoad(target, offset);
+            IRValueInstruction load = new IRLoad(target, offset, targetType);
             return load;
         }
 
@@ -408,7 +420,7 @@ namespace CommonIR.IR
         /// <param name="type"></param>
         /// <param name="size"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildArray(IRType type, IRValueInstruction size)
+        public IRValueInstruction CreateArray(IRType type, IRValueInstruction size)
         {
             IRValueInstruction array = new IRArray(type, size);
             return array;
@@ -443,11 +455,11 @@ namespace CommonIR.IR
         /// <summary>
         /// Allocates memory of specified byte count and returns a pointer to the starting position of the allocated memory.
         /// </summary>
-        /// <param name="bytes"></param>
+        /// <param name="byteCount"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildMalloc(IRValueInstruction bytes)
+        public IRValueInstruction BuildMalloc(IRValueInstruction byteCount)
         {
-            IRValueInstruction malloc = new IRMalloc(bytes);
+            IRValueInstruction malloc = new IRMalloc(byteCount);
             return malloc;
         }
 
@@ -466,6 +478,66 @@ namespace CommonIR.IR
             IRVoidInstruction panic = new IRPanic(message);
             InsertVoidInstruction(panic);
             return panic;
+        }
+
+        /// <summary>
+        /// Macro for allocating a struct. Returns a fat pointer.
+        /// </summary>
+        /// <param name="_struct"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildStruct(IRStruct _struct)
+        {
+            return BuildMalloc(BuildConstantInteger(IRDataTypes.Int32, _struct.Width));
+        }
+
+        /// <summary>
+        /// Macro for allocating an array. Returns either a fat pointer or a pointer, depending on if the size of the array can be evaluated at compile-time.
+        /// </summary>
+        /// <param name="array"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildArrayAllocation(IRType elementType, IRValueInstruction size)
+        {
+            if(size.IsConstant && size is IRConstantInteger integer)
+            {
+                return BuildMalloc(BuildConstantInteger(IRDataTypes.Int32, integer.Value * elementType.Width));
+            }
+
+            return BuildMalloc(BuildMultiply(size, BuildConstantInteger(IRDataTypes.Int32, elementType.Width)));
+        }
+
+        /// <summary>
+        /// Macro for storing a element into an array.
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="elementType"></param>
+        /// <param name="index"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public IRVoidInstruction BuildStoreArrayElement(IRValueInstruction pointer, IRType elementType, IRValueInstruction index, IRValueInstruction value)
+        {
+            if (index.IsConstant && index is IRConstantInteger integer)
+            {
+                return BuildStore(pointer, BuildConstantInteger(IRDataTypes.Int32, integer.Value * elementType.Width), value);
+            }
+
+            return BuildStore(pointer, BuildMultiply(index, BuildConstantInteger(IRDataTypes.Int32, elementType.Width)), value);
+        }
+
+        /// <summary>
+        /// Macro for loading a element from an array.
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="index"></param>
+        /// <param name="elementType"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildLoadArrayElement(IRValueInstruction pointer, IRValueInstruction index, IRType elementType)
+        {
+            if (index.IsConstant && index is IRConstantInteger integer)
+            {
+                return BuildLoad(pointer, elementType, BuildConstantInteger(IRDataTypes.Int32, integer.Value * elementType.Width));
+            }
+
+            return BuildLoad(pointer, elementType, BuildMultiply(index, BuildConstantInteger(IRDataTypes.Int32, elementType.Width)));
         }
     }
 }

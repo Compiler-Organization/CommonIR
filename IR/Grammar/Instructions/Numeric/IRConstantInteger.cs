@@ -8,6 +8,7 @@ namespace CommonIR.IR.Grammar.Instructions
 
         public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
         public bool IsVoid { get; } = false;
+        public bool IsConstant { get; set; } = true;
 
         public IRGrammar? Parent { get; set; }
         public IRDataTypes IntegerType { get; set; }

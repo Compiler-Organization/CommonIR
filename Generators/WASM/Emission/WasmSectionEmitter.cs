@@ -1,6 +1,6 @@
 ﻿using CommonIR.Generators.WASM.Model;
 
-namespace CommonIR.Generators.WASM.Emit
+namespace CommonIR.Generators.WASM.Emission
 {
     internal class WasmSectionEmitter
     {

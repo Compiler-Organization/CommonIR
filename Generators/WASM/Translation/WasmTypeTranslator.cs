@@ -8,11 +8,12 @@ namespace CommonIR.Generators.WASM.Translation
     {
         public static WasmFormTypes TranslateIRDataType(IRDataTypes dataType) => dataType switch
         {
-            // Fat pointers
-            IRDataTypes.UserObject or
+            // Reference types
             IRDataTypes.Pointer or
+            IRDataTypes.FatPointer or
             IRDataTypes.String or
-            IRDataTypes.Array => WasmFormTypes.I32,
+            IRDataTypes.Array or 
+            IRDataTypes.Struct => WasmFormTypes.I32,
 
             // Scalars
             IRDataTypes.Int32 => WasmFormTypes.I32,

@@ -1,7 +1,7 @@
 ﻿using CommonIR.Generators.WASM.Model;
 using CommonIR.IR.Grammar.Objects;
 
-namespace CommonIR.Generators.WASM.Emit
+namespace CommonIR.Generators.WASM.Emission
 {
     internal class WasmModuleEmitter
     {

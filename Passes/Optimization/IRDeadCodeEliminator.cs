@@ -43,7 +43,7 @@ namespace CommonIR.Passes.Optimization
             Module.Functions.RemoveAll(f => !f.IsExport && f.References.Count == 0);
         }
 
-        /// <summary>
+        /// <summary> 
         /// Recursively removes references through all operands of an instruction.
         /// </summary>
         /// <param name="instruction"></param>

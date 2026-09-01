@@ -13,5 +13,10 @@ namespace CommonIR.IR.Grammar.Instructions
         /// All instructions referencing this instruction.
         /// </summary>
         public List<IRInstruction> References { get; set; }
+
+        /// <summary>
+        /// Determines if the result of the instruction is known at compile-time.
+        /// </summary>
+        public bool IsConstant { get; set; }
     }
 }

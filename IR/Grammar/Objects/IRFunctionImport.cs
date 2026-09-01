@@ -1,4 +1,6 @@
-﻿namespace CommonIR.IR.Grammar.Objects
+﻿using System.Reflection;
+
+namespace CommonIR.IR.Grammar.Objects
 {
     public class IRFunctionImport : IRFunction, IRObject
     {
@@ -6,6 +8,8 @@
         /// The module of which the data will be imported
         /// </summary>
         public string ModuleName { get; set; }
+
+        public new MethodInfo? CILMethod { get; set; }
 
         public IRFunctionImport(string moduleName, string name, List<IRLocal> parameters, List<IRType> returnTypes) : base(name, parameters, returnTypes, false)
         {

@@ -7,7 +7,7 @@ namespace CommonIR.Generators.WASM.Bindings
 {
     internal class WasmJSBindingsScripts
     {
-        public static string GetInitScript(string wasmFileName, string importBindings) => @"async function initWasmModule(wasmUrl, importObject = {}) {
+        public static string GetInitScript(IRModule module, string wasmFileName, string importBindings) => @"async function initWasmModule(wasmUrl, importObject = {}) {
     try {
         if (typeof WebAssembly.instantiateStreaming === 'function') {
             const response = fetch(wasmUrl);
@@ -32,7 +32,7 @@ let numBytesDecoded = 0;
 let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
 
 let cachedUint8ArrayMemory = null;
-function getMemoryAsUint8Array() {
+export function getMemoryAsUint8Array() {
     if(cachedUint8ArrayMemory === null || cachedUint8ArrayMemory.buffer !== wasmImports.env.memory.buffer) {
         cachedUint8ArrayMemory = new Uint8Array(wasmImports.env.memory.buffer);
     }
@@ -46,6 +46,7 @@ function decodeText(ptr, len) {
         cachedTextDecoder.decode();
         numBytesDecoded = len;
     }
+
     return cachedTextDecoder.decode(getMemoryAsUint8Array().subarray(ptr, ptr + len));
 }
 
@@ -72,7 +73,7 @@ async function init() {
   
     if (!(wasmInstance && wasmInstance.exports)) {
         console.error('Failed to initialize webassembly.');
-    }
+    }" + (module.EntryPoint == null ? "" : $"\n\n    wasm.{module.EntryPoint.Name}();") + @"
 }
 
 export { init as default }

@@ -5,7 +5,10 @@ using System.Text;
 
 namespace CommonIR.IR.Grammar.Instructions.Memory
 {
-    public class IRMalloc : IRValueInstruction
+    /// <summary>
+    /// Retrieves the size of an object as Int32.
+    /// </summary>
+    public class IRSizeOf : IRValueInstruction
     {
         public bool IsVoid { get; } = true;
 
@@ -16,20 +19,20 @@ namespace CommonIR.IR.Grammar.Instructions.Memory
         public bool IsConstant { get; set; } = false;
 
         /// <summary>
-        /// The amount of bytes to be allocated
+        /// The target to retrieve the size of.
         /// </summary>
-        public IRValueInstruction Bytes { get; set; }
+        public IRGrammar Target { get; set; }
 
-        public IRType ValueType { get; set; } = new IRType(IRDataTypes.Pointer);
+        public IRType ValueType { get; set; } = new IRType(IRDataTypes.Int32);
 
-        public IRMalloc(IRValueInstruction bytes)
+        public IRSizeOf(IRGrammar target)
         {
-            this.Bytes = bytes;
+            this.Target = target;
         }
 
         public string Dump(int indendation)
         {
-            return $"{new string('\t', indendation)}malloc ({this.Bytes.Dump(0)})";
+            return $"{new string('\t', indendation)}sizeof ({this.Target})";
         }
     }
 }

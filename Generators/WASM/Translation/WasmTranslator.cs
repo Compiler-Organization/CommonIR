@@ -1,5 +1,5 @@
 ﻿using CommonIR.Errors;
-using CommonIR.Generators.WASM.Emit;
+using CommonIR.Generators.WASM.Emission;
 using CommonIR.Generators.WASM.Model;
 using CommonIR.Generators.WASM.Model.Sections;
 using CommonIR.IR.Grammar;

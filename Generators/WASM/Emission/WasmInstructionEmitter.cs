@@ -13,7 +13,7 @@ using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Text;
 
-namespace CommonIR.Generators.WASM.Emit
+namespace CommonIR.Generators.WASM.Emission
 {
     internal class WasmInstructionEmitter
     {
@@ -37,25 +37,38 @@ namespace CommonIR.Generators.WASM.Emit
         }
 
         public List<byte> EmitInstructions(List<IRInstruction> instructions)
-        {
-            var bytecode = new List<byte>();
+            => instructions.SelectMany(EmitInstruction).ToList();
 
-            foreach (var instruction in instructions)
-            {
-                bytecode.AddRange(EmitInstruction(instruction));
-            }
+        public List<byte> EmitValueInstructions(List<IRValueInstruction> valueInstructions)
+            => valueInstructions.SelectMany(EmitInstruction).ToList();
 
-            //if (instructions.Last() is not IRReturn)
-            //{
-            //    bytecode.Add((byte)WasmInstructions.End);
-            //}
-
-            return bytecode;
-        }
+        /// <summary>
+        /// Cache to replace a instruction used multipe times with a local set / load.
+        /// </summary>
+        Dictionary<IRValueInstruction, IRLocal> CachedInstructions = new Dictionary<IRValueInstruction, IRLocal>();
 
         public byte[] EmitInstruction(IRInstruction instruction)
         {
-            return instruction switch
+            if (instruction is IRValueInstruction valueInstruction && CachedInstructions.TryGetValue(valueInstruction, out IRLocal? localCache))
+            {
+                if (valueInstruction.ValueType.IsFatPointer)
+                {
+                    if (localCache.LengthCompanion == null)
+                    {
+                        throw ErrorHandler.Create("Cached instruction is a reference type but contains no length companion.");
+                    }
+
+                    return [(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(localCache.LengthCompanion.Offset), (byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(localCache.Offset)];
+                }
+                else
+                {
+                    return [(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(localCache.Offset)];
+                }
+            }
+
+            List<byte> bytecode = [];
+
+            bytecode.AddRange(instruction switch
             {
                 IRAdd add => EmitAdd(add),
                 IRSubtract subtract => EmitSubtract(subtract),
@@ -83,7 +96,42 @@ namespace CommonIR.Generators.WASM.Emit
                 IRProperty property => EmitProperty(property),
 
                 _ => throw new NotImplementedException($"No Wasm translation implemented for instruction '{instruction.GetType().Name}'")
-            };
+            });
+
+            if (instruction is IRValueInstruction valInstruction
+                && !valInstruction.IsConstant
+                && valInstruction.References.Count > 1)
+            {
+                if (this.Function == null)
+                {
+                    throw ErrorHandler.Create($"Cannot create temporary cache for '{valInstruction.Dump(0)}': Instruction emitter did not receive a target function.");
+                }
+
+                IRLocal newLocalCache = this.Function.CreateLocal($"{this.Function.Locals.Count}", valInstruction.ValueType, isMutable: true);
+                CachedInstructions.Add(valInstruction, newLocalCache);
+
+                if (valInstruction.ValueType.IsFatPointer)
+                {
+                    IRLocal lengthCompanion = this.Function.CreateLocal($"{this.Function.Locals.Count}", new IRType(IRDataTypes.Int32), isMutable: true);
+                    newLocalCache.LengthCompanion = lengthCompanion;
+
+                    List<byte> interceptFat = [];
+
+                    interceptFat.AddRange([(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(newLocalCache.Offset)]);
+                    interceptFat.AddRange([(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(lengthCompanion.Offset)]);
+
+                    interceptFat.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(lengthCompanion.Offset)]);
+                    interceptFat.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(newLocalCache.Offset)]);
+
+                    bytecode.AddRange(interceptFat);
+                }
+                else
+                {
+                    bytecode.AddRange([(byte)WasmInstructions.Local_tee, .. LEB128.EncodeUnsigned(newLocalCache.Offset)]);
+                }
+            }
+
+            return bytecode.ToArray();
         }
 
         public byte[] EmitPanic(IRPanic panic)
@@ -175,7 +223,7 @@ namespace CommonIR.Generators.WASM.Emit
         {
             List<byte> bytecode = [];
 
-            if(local.ValueType.IsReferenceType)
+            if(local.ValueType.IsFatPointer)
             {
                 if(local.LengthCompanion == null)
                 {
@@ -194,7 +242,7 @@ namespace CommonIR.Generators.WASM.Emit
         {
             List<byte> bytecode = [];
 
-            if (global.ValueType.IsReferenceType)
+            if (global.ValueType.IsFatPointer)
             {
                 if (global.LengthCompanion == null)
                 {
@@ -235,7 +283,7 @@ namespace CommonIR.Generators.WASM.Emit
                         bytecode.AddRange(EmitInstruction(store.Value));
 
                         bytecode.AddRange([(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(local.Offset)]);
-                        if(store.Value.ValueType.IsReferenceType)
+                        if(local.ValueType.IsFatPointer)
                         {
                             if(local.LengthCompanion == null)
                             {
@@ -252,7 +300,7 @@ namespace CommonIR.Generators.WASM.Emit
                         bytecode.AddRange(EmitInstruction(store.Value));
 
                         bytecode.AddRange([(byte)WasmInstructions.Global_set, .. LEB128.EncodeUnsigned(global.Offset)]);
-                        if (store.Value.ValueType.IsReferenceType)
+                        if (global.ValueType.IsFatPointer)
                         {
                             if (global.LengthCompanion == null)
                             {
@@ -273,24 +321,39 @@ namespace CommonIR.Generators.WASM.Emit
                 bytecode.AddRange([(byte)WasmInstructions.I32_add]);
             }
 
-            if (store.Value.ValueType.IsReferenceType)
+            if (store.Value.ValueType.IsFatPointer)
             {
                 if (this.Function == null)
                 {
                     throw ErrorHandler.Create($"Emitted store must belong to a function: {store.Dump(0)}");
                 }
 
-                IRLocal pointer = ScratchPool!.Borrow(IRDataTypes.Int32);
-                bytecode.AddRange([(byte)WasmInstructions.Local_tee, .. LEB128.EncodeUnsigned(pointer.Offset)]);
-                bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(pointer.Offset)]);
-            }
+                IRLocal addrScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
+                IRLocal dataScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
+                IRLocal lenScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
 
-            bytecode.AddRange(EmitInstruction(store.Value));
-            bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
+                bytecode.AddRange([(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
 
-            if(store.Value.ValueType.IsReferenceType)
-            {
+                bytecode.AddRange(EmitInstruction(store.Value));
+                bytecode.AddRange([(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(lenScratch.Offset)]);
+                bytecode.AddRange([(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(dataScratch.Offset)]);
+
+                bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
+                bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(dataScratch.Offset)]);
+                bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
+
+                bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
+                bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(lenScratch.Offset)]);
                 bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(4)]);
+
+                ScratchPool.Return(addrScratch);
+                ScratchPool.Return(dataScratch);
+                ScratchPool.Return(lenScratch);
+            }
+            else
+            {
+                bytecode.AddRange(EmitInstruction(store.Value));
+                bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
             }
 
             return bytecode.ToArray();
@@ -311,13 +374,13 @@ namespace CommonIR.Generators.WASM.Emit
 
             bytecode.AddRange(EmitInstruction(load.Target));
 
-            if(load.Offset != null)
+            if (load.Offset != null)
             {
                 bytecode.AddRange(EmitInstruction(load.Offset));
                 bytecode.AddRange([(byte)WasmInstructions.I32_add]);
             }
 
-            if (load.Target.ValueType.IsReferenceType)
+            if (load.TargetType.IsFatPointer)
             {
                 if (this.Function == null)
                 {
@@ -327,11 +390,10 @@ namespace CommonIR.Generators.WASM.Emit
                 IRLocal baseAddressScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
 
                 bytecode.AddRange([(byte)WasmInstructions.Local_tee, .. LEB128.EncodeUnsigned(baseAddressScratch.Offset)]);
-                bytecode.AddRange([(byte)WasmInstructions.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
-
-                bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(baseAddressScratch.Offset)]);
                 bytecode.AddRange([(byte)WasmInstructions.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(4)]);
 
+                bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(baseAddressScratch.Offset)]);
+                bytecode.AddRange([(byte)WasmInstructions.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
                 ScratchPool.Return(baseAddressScratch);
             }
             else
@@ -347,9 +409,9 @@ namespace CommonIR.Generators.WASM.Emit
         {
             List<byte> bytes = new List<byte>();
 
-            if(ret.Value != null)
+            if(ret.Values != null)
             {
-                bytes.AddRange(EmitInstruction(ret.Value));
+                bytes.AddRange(EmitValueInstructions(ret.Values));
             }
 
             return [

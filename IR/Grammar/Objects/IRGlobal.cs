@@ -13,6 +13,7 @@ namespace CommonIR.IR.Grammar.Objects
         public bool IsVoid { get; } = false;
 
         public IRGrammar? Parent { get; set; }
+        public bool IsConstant { get; set; } = false;
 
         /// <summary>
         /// The name of the global. Automatically generated if not defined.

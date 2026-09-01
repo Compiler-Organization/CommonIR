@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace CommonIR.Generators.WASM.Emit
+namespace CommonIR.Generators.WASM.Emission
 {
     internal class WasmFactorizedFunctions
     {
@@ -48,7 +48,7 @@ namespace CommonIR.Generators.WASM.Emit
             IRFunction errorFunction = this.Module.GetOrCreateFunctionImport("console", "error", new IRType(IRDataTypes.Void), [new IRLocal("message", new IRType(IRDataTypes.String), true)]);
 
             IRBuilder builder = new IRBuilder(Module, panic, panic.Entryblock);
-            IRValueInstruction errorString = builder.BuildLoad(messageParameter);
+            IRValueInstruction errorString = builder.BuildLoad(messageParameter, messageParameter.ValueType);
             builder.BuildCall(errorFunction, [errorString]);
             builder.BuildBytes([0x00]);
 

@@ -1,5 +1,7 @@
 ﻿using CommonIR.IR.Grammar.Instructions;
 using CommonIR.IR.Grammar.Instructions.ControlFlow;
+using System.Reflection;
+using System.Reflection.Emit;
 
 namespace CommonIR.IR.Grammar.Objects
 {
@@ -42,6 +44,13 @@ namespace CommonIR.IR.Grammar.Objects
 
         public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
 
+        /// <summary>
+        /// Used for function mapping (WASM, x86, etc.)
+        /// </summary>
+        internal ulong Offset { get; set; } = 0;
+
+        internal MethodBuilder? CILMethod { get; set; }
+
         public IRFunction(string name, List<IRLocal> parameters, List<IRType> returnTypes, bool isExport)
         {
             Name = name;
@@ -53,53 +62,26 @@ namespace CommonIR.IR.Grammar.Objects
 
             this.Blocks.Add(this.Entryblock);
 
-            var flattenedReturnTypes = new List<IRType>();
-            foreach (var retType in returnTypes)
-            {
-                if (retType.IsReferenceType)
-                {
-                    flattenedReturnTypes.Add(new IRType(IRDataTypes.Int32));
-                    flattenedReturnTypes.Add(new IRType(IRDataTypes.Int32));
-                }
-                else
-                {
-                    flattenedReturnTypes.Add(retType);
-                }
-            }
-            ReturnTypes = flattenedReturnTypes;
+            ReturnTypes = returnTypes;
 
             foreach (IRLocal parameter in parameters)
             {
-                if (parameter.ValueType.IsReferenceType)
+                parameter.Offset = (ulong)this.Parameters.Count;
+                this.Parameters.Add(parameter);
+
+                if (parameter.ValueType.IsFatPointer)
                 {
-                    IRLocal aggregatePointer = new IRLocal($"{parameter.Name}_ptr", parameter.ValueType, parameter.IsMutable)
+                    IRLocal lengthCompanion = new IRLocal($"{parameter.Name}_len", IRDataTypes.Int32, isMutable: true) 
                     {
                         Offset = (ulong)this.Parameters.Count
                     };
-                    this.Parameters.Add(aggregatePointer);
 
-                    IRLocal lengthCompanion = new IRLocal($"{parameter.Name}_len", new IRType(IRDataTypes.Int32), parameter.IsMutable)
-                    {
-                        Offset = (ulong)this.Parameters.Count
-                    };
-                    this.Parameters.Add(lengthCompanion);
-
-                    aggregatePointer.LengthCompanion = lengthCompanion;
-                }
-                else
-                {
-                    parameter.Offset = (ulong)this.Parameters.Count;
-                    this.Parameters.Add(parameter);
+                    parameter.LengthCompanion = lengthCompanion;
                 }
             }
 
             IsExport = isExport;
         }
-
-        /// <summary>
-        /// Used for function mapping (WASM, x86, etc.)
-        /// </summary>
-        internal ulong Offset { get; set; } = 0;
 
         /// <summary>
         /// Creates a local, adds it to the function and returns it.
@@ -116,7 +98,7 @@ namespace CommonIR.IR.Grammar.Objects
             };
             Locals.Add(local);
 
-            if (type.IsReferenceType)
+            if (type.IsFatPointer)
             {
                 local.LengthCompanion = new IRLocal(new IRType(IRDataTypes.Int32), isMutable: true)
                 {
