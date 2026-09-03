@@ -62,7 +62,7 @@ List<SourceFile> sourceFiles = codeGen.GenerateSourceFiles(module);
 The [IRFunction](https://github.com/Compiler-Organization/CommonIR/blob/master/IR/Grammar/Objects/IRFunction.cs) is the container for all IR instructions. It uses IRBlocks to group instructions together and control the flow of execution.
 Any interaction with an IRFunction should happen through either its methods or through an IRBuilder.
 
-Instructions are contained within an IRFunction's ``EntryBlock``.
+Instructions are contained within an IRFunction's ``Entryblock``.
 
 ```csharp
 IRFunction mainFunction = module.CreateFunction(
@@ -143,7 +143,7 @@ IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log"
 
 // Building a string and calling 'console.log' with it.
 IRValueInstruction helloWorldString = builder.BuildString("Hello, World!");
-builder.BuildCall(consoleLogImport, []);
+builder.BuildCall(consoleLogImport, [helloWorldString]);
 builder.BuildReturn();
 
 // Generating the source files from the IRModule and writing them to the disk.
