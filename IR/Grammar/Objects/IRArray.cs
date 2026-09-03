@@ -67,7 +67,7 @@ namespace CommonIR.IR.Grammar.Objects
 
         public string Dump(int indentation)
         {
-            return $"{new string('\t', indentation)}array : {this.ValueType.Dump(0)} {{ {(this.Elements.Count > 0 ? string.Join(", ", this.Elements.Select(e => e.Dump(0))) : "")} }}";
+            return $"{new string('\t', indentation)}array : {this.ElementType.Dump(0)} {{ {(this.Elements.Count > 0 ? string.Join(", ", this.Elements.Select(e => e.Dump(0))) : "")} }}";
         }
     }
 }

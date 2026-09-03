@@ -17,7 +17,7 @@ namespace CommonIR.Generators.WASM.Emission
 {
     internal class WasmInstructionEmitter
     {
-        private Stack<IRBlock> BlockContextStack = new Stack<IRBlock>();
+        Stack<IRBlock> BlockContextStack { get; set; } = new Stack<IRBlock>();
 
         IRFunction? Function { get; set; }
 
@@ -87,13 +87,14 @@ namespace CommonIR.Generators.WASM.Emission
                 IRString str => EmitLoadString(str),
                 IRGlobal global => EmitLoadGlobal(global),
                 IRLocal local => EmitLoadLocal(local),
-                IRStruct _struct => EmitStruct(_struct),
                 IRBytes bytes => EmitBytes(bytes),
 
                 IRMalloc malloc => EmitMalloc(malloc),
                 IRPanic panic => EmitPanic(panic),
-                
-                IRProperty property => EmitProperty(property),
+
+                IRArray array => EmitInitializeArray(array),
+                IRStruct _struct => EmitInitializeStruct(_struct),
+                IRStructProperty property => EmitProperty(property),
 
                 _ => throw new NotImplementedException($"No Wasm translation implemented for instruction '{instruction.GetType().Name}'")
             });
@@ -149,10 +150,73 @@ namespace CommonIR.Generators.WASM.Emission
             return bytes.Bytes;
         }
 
-        public byte[] EmitStruct(IRStruct _struct)
+        public byte[] EmitInitializeStruct(IRStruct _struct)
         {
-            // TODO: Impliment struct allocation using the factorized "malloc" function.
-            throw ErrorHandler.CreateNotImplimented("");
+            List<byte> bytecode = [];
+
+            bytecode.AddRange(EmitMalloc(new IRMalloc(new IRConstantInteger(IRDataTypes.Int32, _struct.Width))));
+
+            if (this.Function == null)
+            {
+                throw ErrorHandler.Create($"Context error: Target function context missing for struct '{_struct.Name}' initialization.");
+            }
+
+            IRLocal addrScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
+            bytecode.AddRange([(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
+
+            foreach (IRStructProperty structProperty in _struct.Properties)
+            {
+                if(structProperty.DefaultValue == null)
+                {
+                    continue;
+                }
+
+                if (structProperty.DefaultValue.ValueType.IsFatPointer)
+                {
+                    if (this.Function == null)
+                    {
+                        throw ErrorHandler.Create($"Emitted property assignment in struct initiallization '{_struct.Name}' must belong to a function: {structProperty.DefaultValue.Dump(0)}");
+                    }
+
+                    IRLocal dataScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
+                    IRLocal lenScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
+
+                    bytecode.AddRange(EmitInstruction(structProperty.DefaultValue));
+                    bytecode.AddRange([(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(lenScratch.Offset)]);
+                    bytecode.AddRange([(byte)WasmInstructions.Local_set, .. LEB128.EncodeUnsigned(dataScratch.Offset)]);
+
+                    bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
+                    bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(dataScratch.Offset)]);
+                    bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned((ulong)structProperty.Offset)]);
+
+                    bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
+                    bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(lenScratch.Offset)]);
+                    bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned((ulong)(structProperty.Offset + 4))]);
+
+                    ScratchPool.Return(dataScratch);
+                    ScratchPool.Return(lenScratch);
+                }
+                else
+                {
+                    bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
+                    bytecode.AddRange(EmitInstruction(structProperty.DefaultValue));
+                    bytecode.AddRange([(byte)WasmInstructions.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned((ulong)structProperty.Offset)]);
+                }
+            }
+            bytecode.AddRange([(byte)WasmInstructions.Local_get, .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
+            ScratchPool.Return(addrScratch);
+
+            return bytecode.ToArray();
+        }
+
+        public byte[] EmitInitializeArray(IRArray array)
+        {
+            if(array.Size.IsConstant && array.Size is IRConstantInteger sizeConstant)
+            {
+                return EmitInstruction(new IRMalloc(new IRConstantInteger(IRDataTypes.Int32, sizeConstant.Value * array.ElementType.Width)));
+            }
+
+            return EmitInstruction(new IRMalloc(new IRMultiply(array.Size, new IRConstantInteger(IRDataTypes.Int32, array.ElementType.Width))));
         }
 
         public byte[] EmitAdd(IRAdd add)
@@ -267,7 +331,7 @@ namespace CommonIR.Generators.WASM.Emission
             return bytecode.ToArray();
         }
 
-        public byte[] EmitProperty(IRProperty property)
+        public byte[] EmitProperty(IRStructProperty property)
         {
             return [(byte)WasmInstructions.I32_const, .. LEB128.EncodeSigned(property.Offset)];
         }

@@ -1,11 +1,13 @@
-﻿using CommonIR.IR.Grammar.Instructions;
+﻿using CommonIR.Errors;
+using CommonIR.IR.Grammar.Instructions;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 
 namespace CommonIR.IR.Grammar.Objects
 {
-    public class IRProperty : IRObject, IRValueInstruction
+    public class IRStructProperty : IRObject, IRValueInstruction
     {
         public List<IRInstruction> References { get; set; } = new List<IRInstruction>();
 
@@ -32,15 +34,31 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         public int Offset { get; set; }
 
-        internal IRProperty(IRType type, string name)
+        public IRValueInstruction? DefaultValue { get; set; }
+
+        internal FieldInfo? CILField { get; set; }
+
+        public IRStructProperty(IRType type, string name)
         {
             this.ValueType = type;
             this.Name = name;
         }
 
+        public IRStructProperty(IRType type, string name, IRValueInstruction defaultValue)
+        {
+            this.ValueType = type;
+            this.Name = name;
+            this.DefaultValue = defaultValue;
+
+            if(type != defaultValue.ValueType)
+            {
+                throw ErrorHandler.Create($"The default value type '{defaultValue.ValueType}' does not match the property type '{type}'.");
+            }
+        }
+
         public string Dump(int indentation)
         {
-            return $"{new string('\t', indentation)}property [{this.Index}] ({this.Name})";
+            return $"{new string('\t', indentation)}struct_property [{this.Index}] ({this.Name})";
         }
     }
 }

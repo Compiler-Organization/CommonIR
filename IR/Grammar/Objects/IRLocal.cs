@@ -1,4 +1,5 @@
 ﻿using CommonIR.IR.Grammar.Instructions;
+using System.Reflection.Emit;
 
 namespace CommonIR.IR.Grammar.Objects
 {
@@ -34,6 +35,8 @@ namespace CommonIR.IR.Grammar.Objects
          /// If the local is a fat pointer, this is the length companion to it.
          /// </summary>
         public IRLocal? LengthCompanion { get; set; }
+
+        public LocalBuilder? CILLocal { get; set; }
 
         public IRLocal(IRType type, bool isMutable)
         {

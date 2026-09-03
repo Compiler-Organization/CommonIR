@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
 	<PackageId>CommonIR</PackageId>
-	<Version>1.1.7</Version>
+	<Version>1.1.8</Version>
 	<Authors>Draugr-official</Authors>
 	<Company>Compiler Organization</Company>
 	<Description>Generic IR to support a variety of different targets, such as WASM, x8664, and other modern architectures.</Description>
@@ -14,7 +14,7 @@
 	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-	<PackageReleaseNotes>Completed fundamental WebAssembly target. Started work on Common Intermediate Language target.</PackageReleaseNotes>
+	<PackageReleaseNotes>Changed aggregates to now have default initialization methods in IRBuilder. IRStructProperty can now be initialized with a default value upon instantiation of structs. Expanded Usage.md.</PackageReleaseNotes>
 	<PackageProjectUrl>https://github.com/Compiler-Organization/CommonIR</PackageProjectUrl>
 	<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>

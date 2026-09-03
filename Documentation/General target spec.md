@@ -37,9 +37,9 @@ fn main {
 Even though the email property was not assigned, a pointer with size 0 was still created at ``Person.Email``.
 
 ## Pointers
-All targets using linear memory should use fat pointers, meaning pointers should store both the pointer to data aswell as the size of given data.
+All targets using linear memory should use fat pointers for aggregates, meaning pointers should store both the pointer to data aswell as the size of given data.
 
-Depending on the architecture, x86, for example, would produce 8-byte fat pointers (as UInt64), whilst x64 would produce a 16-byte fat pointer (as UInt128).
+Depending on the architecture, x86, for example, would an 8-byte value tuple (or UInt64), whilst x64 would produce a 16-byte value tuple (or UInt128).
 
 Below is a visual example of a fat pointer on a 32-bit system:
 

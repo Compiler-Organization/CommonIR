@@ -204,7 +204,7 @@ namespace CommonIR.IR.Grammar.Objects
         /// <returns></returns>
         public IRStruct CreateStruct(string name)
         {
-            IRStruct _struct = new IRStruct(name, new List<IRProperty>())
+            IRStruct _struct = new IRStruct(name, new List<IRStructProperty>())
             {
                 Parent = this,
             };
@@ -218,7 +218,7 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         /// <param name="properties"></param>
         /// <returns></returns>
-        public IRStruct CreateStruct(string name, List<IRProperty> properties)
+        public IRStruct CreateStruct(string name, List<IRStructProperty> properties)
         {
             IRStruct _struct = new IRStruct(name, properties) 
             {

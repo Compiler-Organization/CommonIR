@@ -102,7 +102,7 @@ namespace CommonIR.Generators.WASM.Bindings
                         throw ErrorHandler.Create($"Length companion to fat pointer '{local.Name}' was never declared.");
                     }
 
-                    convertedLocals.Add(WrapWithHelperReader($"{local.LengthCompanion.Name}, {local.Name}", local.ValueType));
+                    convertedLocals.Add(WrapWithHelperReader($"{local.Name}, {local.LengthCompanion.Name}", local.ValueType));
                     
                     if(i + 1 < locals.Count && locals[i + 1] == local.LengthCompanion)
                     {

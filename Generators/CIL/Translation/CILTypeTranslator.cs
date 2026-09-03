@@ -4,12 +4,17 @@ using CommonIR.IR.Grammar.Objects;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Text;
 
 namespace CommonIR.Generators.CIL.Translation
 {
     internal class CILTypeTranslator
     {
+        public static IRModule? Module { get; set; }
+
+        static Dictionary<IRStruct, Type> StructCache = [];
+
         public static Type TranslateIRDataType(IRDataTypes dataType)
             => dataType switch
             {
@@ -28,7 +33,38 @@ namespace CommonIR.Generators.CIL.Translation
             };
 
         public static Type TranslateIRType(IRType type)
-            => TranslateIRDataType(type.DataType);
+        {
+            if(type.DataType == IRDataTypes.Struct)
+            {
+                if (type.UserObject is not IRStruct irStruct)
+                    throw ErrorHandler.Create($"Translating datatype '{type}' to CIL is not supported");
+
+                return TranslateIRStruct(irStruct);
+            }
+
+
+            return TranslateIRDataType(type.DataType);
+        }
+
+        public static Type TranslateIRStruct(IRStruct irStruct)
+        {
+            if (StructCache.TryGetValue(irStruct, out Type? cachedType))
+            {
+                return cachedType;
+            }
+;
+            TypeBuilder typeBuilder = Module!.CILModule!.DefineType(irStruct.Name, TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.SequentialLayout, Type.GetType("System.ValueType, System.Runtime"));
+
+            foreach (IRStructProperty property in irStruct.Properties)
+            {
+                property.CILField = typeBuilder.DefineField(property.Name, TranslateIRType(property.ValueType), FieldAttributes.Public);
+            }
+
+            Type builtType = typeBuilder.CreateType();
+            StructCache.Add(irStruct, builtType);
+
+            return builtType;
+        }
 
         public static Type TranslateIRTypes(List<IRType> types)
         {
@@ -64,6 +100,34 @@ namespace CommonIR.Generators.CIL.Translation
             genericArgs[7] = CreateValueTupleType(rest);
 
             return openTupleType.MakeGenericType(genericArgs);
+        }
+
+        public static ConstructorInfo? CreateValueTupleTypeConstructor(Type[] types)
+        {
+            Type openTupleType = types.Length switch
+            {
+                2 => typeof(ValueTuple<,>),
+                3 => typeof(ValueTuple<,,>),
+                4 => typeof(ValueTuple<,,,>),
+                5 => typeof(ValueTuple<,,,,>),
+                6 => typeof(ValueTuple<,,,,,>),
+                7 => typeof(ValueTuple<,,,,,,>),
+                _ => typeof(ValueTuple<,,,,,,,>)
+            };
+
+            if (types.Length <= 7)
+            {
+                return openTupleType.MakeGenericType(types).GetConstructor(types);
+            }
+
+            Type[] firstSeven = types.Take(7).ToArray();
+            Type[] rest = types.Skip(7).ToArray();
+
+            Type[] genericArgs = new Type[8];
+            firstSeven.CopyTo(genericArgs, 0);
+            genericArgs[7] = CreateValueTupleType(rest);
+
+            return openTupleType.MakeGenericType(genericArgs).GetConstructor(genericArgs);
         }
     }
 }

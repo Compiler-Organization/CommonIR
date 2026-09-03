@@ -17,17 +17,17 @@ namespace CommonIR.App
     {
         static void Main(string[] args)
         {
-            IRModule module = new IRModule("test");
-
-            BuildDataApp(module);
-
             CommonIRCodeGeneratorSettings codeGenSettings = new CommonIRCodeGeneratorSettings
             {
-                Target = CommonIRTargets.CommonIntermediateLanguage,
-                TargetConfiguration = new CommonIRCILConfiguration(),
+                Target = CommonIRTargets.WebAssembly,
+                TargetConfiguration = new(),
                 OptimizingMode = OptimizingMode.None,
             };
             CommonIRCodeGenerator codeGen = new CommonIRCodeGenerator(codeGenSettings);
+
+            IRModule module = new IRModule("test");
+
+            BuildDataApp(module);
 
             foreach (SourceFile sourceFile in codeGen.GenerateSourceFiles(module))
             {
@@ -61,9 +61,32 @@ namespace CommonIR.App
             (IRFunction function, IRBuilder builder) = SetUpInterface(module);
             module.EntryPoint = function;
 
-            IRFunctionImport consoleLogImport = module.CreateFunctionImport("System.Console", "WriteLine", new IRType(IRDataTypes.Void), [new IRLocal("x", IRDataTypes.String, isMutable: false)]);
+            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("x", IRDataTypes.Int32, isMutable: false)]);
 
-            builder.BuildCall(consoleLogImport, [builder.BuildString("Hello, world!")]);
+            IRStructProperty myIntProperty = new IRStructProperty(
+                type: new IRType(IRDataTypes.Int32), 
+                name: "myInt", 
+                defaultValue: builder.BuildConstantInteger(IRDataTypes.Int32, 42)
+            );
+
+            IRStruct myStruct = module.CreateStruct("MyStruct", [myIntProperty]);
+
+            IRValueInstruction _struct = builder.BuildInitializeStruct(myStruct);
+
+            // builder.BuildStore(_struct, myIntProperty, builder.BuildConstantInteger(IRDataTypes.Int32, 42));
+
+            IRValueInstruction loadedValue = builder.BuildLoad(_struct, myIntProperty.ValueType, myIntProperty);
+
+            //IRValueInstruction array = builder.BuildCreateArray(IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 4));
+            //builder.BuildStoreArrayElement(array, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0), builder.BuildString("Hello, World!"));
+
+            //IRValueInstruction loadedValue = builder.BuildLoadArrayElement(array, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0));
+
+            builder.BuildCall(consoleLogImport, [loadedValue]);
+
+            builder.BuildStore(_struct, myIntProperty, builder.BuildConstantInteger(IRDataTypes.Int32, 41));
+            builder.BuildCall(consoleLogImport, [builder.BuildLoad(_struct, myIntProperty.ValueType, myIntProperty)]);
+
             builder.BuildReturn();
         }
     }

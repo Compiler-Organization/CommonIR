@@ -1,4 +1,5 @@
 ﻿using CommonIR.Errors;
+using System.Reflection.Metadata.Ecma335;
 
 namespace CommonIR.IR.Grammar.Objects
 {
@@ -101,12 +102,33 @@ namespace CommonIR.IR.Grammar.Objects
 
             if (left.DataType != right.DataType) return false;
 
-            return left.UserObject != null
-                && right.UserObject != null
-                && left.UserObject.Equals(right.UserObject);
+            if (left.UserObject != null && right.UserObject != null && left.UserObject.Equals(right.UserObject)) return true;
+
+            return true;
         }
 
 
         public static bool operator !=(IRType? left, IRType? right) => !(left == right);
+
+        public static class Factory
+        {
+            public static IRType String { get => new IRType(IRDataTypes.String); }
+            public static IRType Int8 { get => new IRType(IRDataTypes.Int8); }
+            public static IRType UInt8 { get => new IRType(IRDataTypes.UInt8); }
+            public static IRType Int16 { get => new IRType(IRDataTypes.Int16); }
+            public static IRType UInt16 { get => new IRType(IRDataTypes.UInt16); }
+            public static IRType Int32 { get => new IRType(IRDataTypes.Int32); }
+            public static IRType UInt32 { get => new IRType(IRDataTypes.UInt32); }
+            public static IRType Int64 { get => new IRType(IRDataTypes.Int64); }
+            public static IRType Float32 { get => new IRType(IRDataTypes.Float32); }
+            public static IRType Float64 { get => new IRType(IRDataTypes.Float64); }
+            public static IRType Pointer { get => new IRType(IRDataTypes.Pointer); }
+            public static IRType FatPointer { get => new IRType(IRDataTypes.FatPointer); }
+            public static IRType Array { get => new IRType(IRDataTypes.Array); }
+            public static IRType Struct { get => new IRType(IRDataTypes.Struct); }
+            public static IRType Bool { get => new IRType(IRDataTypes.Bool); }
+            public static IRType Void { get => new IRType(IRDataTypes.Void); }
+            public static IRType Vector { get => new IRType(IRDataTypes.Vector); }
+        }
     }
 }

@@ -21,7 +21,7 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         public IRType ValueType { get; set; }
 
-        public List<IRProperty> Properties { get; set; }
+        public List<IRStructProperty> Properties { get; set; }
 
         public string Name { get; set; }
 
@@ -30,13 +30,15 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         public int Width { get; set; }
 
-        public IRStruct(string name, List<IRProperty> properties)
+        internal Type? CILType { get; set; }
+
+         internal IRStruct(string name, List<IRStructProperty> properties)
         {
             this.Name = name;
             this.ValueType = new IRType(IRDataTypes.Pointer, this);
-            this.Properties = new List<IRProperty>();
+            this.Properties = new List<IRStructProperty>();
 
-            foreach(IRProperty property in properties)
+            foreach(IRStructProperty property in properties)
             {
                 AddProperty(property);
             }
@@ -47,7 +49,7 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         /// <param name="property"></param>
         /// <returns></returns>
-        public IRProperty AddProperty(IRProperty property)
+        public IRStructProperty AddProperty(IRStructProperty property)
         {
             property.Index = this.Properties.Count;
             property.Offset = this.Width;
@@ -69,9 +71,9 @@ namespace CommonIR.IR.Grammar.Objects
         /// <param name="type"></param>
         /// <param name="name"></param>
         /// <returns></returns>
-        public IRProperty AddProperty(IRType type, string name)
+        public IRStructProperty AddProperty(IRType type, string name)
         {
-            IRProperty property = new IRProperty(type, name)
+            IRStructProperty property = new IRStructProperty(type, name)
             {
                 Parent = this,
                 Index = this.Properties.Count,

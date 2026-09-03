@@ -1,4 +1,4 @@
-﻿using CommonIR.Generators.CIL.Emit;
+﻿using CommonIR.Generators.CIL.Emission;
 using CommonIR.IR.Grammar.Objects;
 using System;
 using System.Collections.Generic;
@@ -24,6 +24,8 @@ namespace CommonIR.Generators.CIL.Translation
                 "Program", 
                 TypeAttributes.Public | TypeAttributes.Class
             );
+
+            CILTypeTranslator.Module = module;
 
             CILFunctionTranslator.CreateFunctionReferences(module, module.CILType);
             CILFunctionTranslator.CreateFunctionBodies(module);

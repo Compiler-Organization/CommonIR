@@ -481,28 +481,37 @@ namespace CommonIR.IR
         }
 
         /// <summary>
-        /// Macro for allocating a struct. Returns a fat pointer.
+        /// Initializes a struct and stores properties if default values are specified. Returns a thin pointer to the beginning of the struct.
         /// </summary>
         /// <param name="_struct"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildStruct(IRStruct _struct)
+        public IRValueInstruction BuildInitializeStruct(string name, List<IRStructProperty> properties)
         {
-            return BuildMalloc(BuildConstantInteger(IRDataTypes.Int32, _struct.Width));
+            IRStruct _struct = new IRStruct(name, properties);
+            this.Module.Objects.Add(_struct);
+            return _struct;
         }
 
         /// <summary>
-        /// Macro for allocating an array. Returns either a fat pointer or a pointer, depending on if the size of the array can be evaluated at compile-time.
+        /// Initializes a struct and stores properties if default values are specified. Returns a thin pointer to the beginning of the struct.
+        /// </summary>
+        /// <param name="_struct"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildInitializeStruct(IRStruct _struct)
+        {
+            return _struct;
+        }
+
+        /// <summary>
+        /// Creates an array. Returns either a fat pointer or a pointer, depending on if the size of the array can be evaluated at compile-time.
         /// </summary>
         /// <param name="array"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildArrayAllocation(IRType elementType, IRValueInstruction size)
+        public IRValueInstruction BuildInitializeArray(IRType elementType, IRValueInstruction size)
         {
-            if(size.IsConstant && size is IRConstantInteger integer)
-            {
-                return BuildMalloc(BuildConstantInteger(IRDataTypes.Int32, integer.Value * elementType.Width));
-            }
-
-            return BuildMalloc(BuildMultiply(size, BuildConstantInteger(IRDataTypes.Int32, elementType.Width)));
+            IRArray array = new IRArray(elementType, size);
+            this.Module.Objects.Add(array);
+            return array;
         }
 
         /// <summary>
@@ -530,7 +539,7 @@ namespace CommonIR.IR
         /// <param name="index"></param>
         /// <param name="elementType"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildLoadArrayElement(IRValueInstruction pointer, IRValueInstruction index, IRType elementType)
+        public IRValueInstruction BuildLoadArrayElement(IRValueInstruction pointer, IRType elementType, IRValueInstruction index)
         {
             if (index.IsConstant && index is IRConstantInteger integer)
             {

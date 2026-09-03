@@ -5,7 +5,7 @@ using System.Reflection.Emit;
 using System.Text;
 using System.Reflection;
 using CommonIR.Errors;
-using CommonIR.Generators.CIL.Emit;
+using CommonIR.Generators.CIL.Emission;
 
 namespace CommonIR.Generators.CIL.Translation
 {
@@ -46,6 +46,12 @@ namespace CommonIR.Generators.CIL.Translation
             foreach(IRFunction function in module.Functions)
             {
                 ILGenerator ilEmitter = function.CILMethod!.GetILGenerator();
+
+                foreach(IRLocal local in function.Locals)
+                {
+                    local.CILLocal = ilEmitter.DeclareLocal(CILTypeTranslator.TranslateIRType(local.ValueType));
+                }
+
                 CILInstructionEmitter instructionEmitter = new CILInstructionEmitter(function, ilEmitter);
                 instructionEmitter.EmitInstructions(function.Entryblock.Instructions);
             }
