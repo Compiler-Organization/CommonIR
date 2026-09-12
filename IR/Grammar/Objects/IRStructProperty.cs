@@ -34,26 +34,12 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         public int Offset { get; set; }
 
-        public IRValueInstruction? DefaultValue { get; set; }
-
         internal FieldInfo? CILField { get; set; }
 
-        public IRStructProperty(IRType type, string name)
+        public IRStructProperty(string name, IRType type)
         {
             this.ValueType = type;
             this.Name = name;
-        }
-
-        public IRStructProperty(IRType type, string name, IRValueInstruction defaultValue)
-        {
-            this.ValueType = type;
-            this.Name = name;
-            this.DefaultValue = defaultValue;
-
-            if(type != defaultValue.ValueType)
-            {
-                throw ErrorHandler.Create($"The default value type '{defaultValue.ValueType}' does not match the property type '{type}'.");
-            }
         }
 
         public string Dump(int indentation)

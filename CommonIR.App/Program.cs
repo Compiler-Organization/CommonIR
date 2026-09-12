@@ -27,7 +27,7 @@ namespace CommonIR.App
 
             IRModule module = new IRModule("test");
 
-            BuildArrayApp(module);
+            BuildConditionalApp(module);
 
             foreach (SourceFile sourceFile in codeGen.GenerateSourceFiles(module))
             {
@@ -55,30 +55,52 @@ namespace CommonIR.App
 
             return (mainFunction, builder);
         }
+        static void BuildConditionalApp(IRModule module)
+        {
+            (IRFunction function, IRBuilder builder) = SetUpInterface(module);
+            module.EntryPoint = function;
+
+            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("x", IRDataTypes.String, isMutable: false)]);
+
+            IRLocal number = function.CreateLocal("number", IRType.Factory.Int32, isMutable: true);
+            IRValueInstruction condition = builder.BuildCompare(IRComparisonOperator.LessThan, number, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 10));
+
+            IRBlock thenBlock = function.CreateBlock("thenBlock");
+            IRBlock elseBlock = function.CreateBlock("elseBlock");
+            builder.SetCheckpoint();
+
+            builder.PositionAtStart(function, thenBlock);
+            builder.BuildCall(consoleLogImport, [builder.BuildConstantString("Condition evaluated to true")]);
+
+            builder.PositionAtStart(function, elseBlock);
+            builder.BuildCall(consoleLogImport, [builder.BuildConstantString("Condition evaluated to false")]);
+
+            builder.RestoreCheckpoint();
+            builder.BuildConditionalBranch(condition, thenBlock, elseBlock);
+
+            builder.BuildReturn();
+        }
 
         static void BuildStructApp(IRModule module)
         {
             (IRFunction function, IRBuilder builder) = SetUpInterface(module);
             module.EntryPoint = function;
 
-            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("x", IRDataTypes.Int32, isMutable: false)]);
+            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("x", IRDataTypes.String, isMutable: false)]);
 
-            IRStructProperty myIntProperty = new IRStructProperty(
-                type: new IRType(IRDataTypes.Int32), 
-                name: "myInt", 
-                defaultValue: builder.BuildConstantInteger(IRDataTypes.Int32, 42)
-            );
+            IRStructProperty messageProperty = new IRStructProperty("message", IRType.Factory.String);
+            IRStructSchema structSchema = module.CreateStructSchema("MyStruct", [messageProperty]);
 
-            IRStructSchema myStruct = module.CreateStructSchema("MyStruct", [myIntProperty]);
+            IRValueInstruction instantiatedStruct = builder.BuildInstantiateStruct(structSchema, [
+                builder.BuildConstantString("Hello, world!")
+            ]);
 
-            IRValueInstruction _struct = builder.BuildInstantiateStruct(myStruct);
-
-            IRValueInstruction loadedValue = builder.BuildLoad(_struct, myIntProperty.ValueType, myIntProperty);
+            IRValueInstruction loadedValue = builder.BuildLoad(instantiatedStruct, messageProperty.ValueType, messageProperty);
 
             builder.BuildCall(consoleLogImport, [loadedValue]);
 
-            builder.BuildStore(_struct, myIntProperty, builder.BuildConstantInteger(IRDataTypes.Int32, 41));
-            builder.BuildCall(consoleLogImport, [builder.BuildLoad(_struct, myIntProperty.ValueType, myIntProperty)]);
+            builder.BuildStore(instantiatedStruct, messageProperty, builder.BuildConstantString("Hello, traditional world!"));
+            builder.BuildCall(consoleLogImport, [builder.BuildLoad(instantiatedStruct, messageProperty.ValueType, messageProperty)]);
 
             builder.BuildReturn();
         }
@@ -88,9 +110,7 @@ namespace CommonIR.App
             (IRFunction function, IRBuilder builder) = SetUpInterface(module);
             module.EntryPoint = function;
 
-            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("x", IRDataTypes.String, isMutable: false)]);
-            IRFunction writeToConsole = module.CreateFunction("WriteToConsole", [IRType.Factory.Void], [new IRLocal("msg", IRType.Factory.String, isMutable: true)], isExport: true);
-            IRFunction writeToConsole2 = module.CreateFunction("WriteToConsole2", [IRType.Factory.Void], [new IRLocal("msg", IRType.Factory.String, isMutable: true)], isExport: true);
+            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("msg", IRDataTypes.String, isMutable: false)]);
 
             IRArraySchema arraySchema = module.CreateArraySchema(IRType.Factory.String);
 
@@ -99,18 +119,9 @@ namespace CommonIR.App
             ]);
 
             IRValueInstruction loadedValue = builder.BuildLoadArrayElement(instantiatedArray, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0));
+            builder.BuildStoreArrayElement(instantiatedArray, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0), loadedValue);
 
-            builder.BuildCall(writeToConsole, [loadedValue]);
-            builder.BuildReturn();
-
-
-            builder.PositionAtStart(writeToConsole, writeToConsole.Entryblock);
-            builder.BuildCall(writeToConsole2, [writeToConsole.Parameters.First()]);
-            builder.BuildReturn();
-
-
-            builder.PositionAtStart(writeToConsole2, writeToConsole2.Entryblock);
-            builder.BuildCall(consoleLogImport, [writeToConsole2.Parameters[0]]);
+            builder.BuildCall(consoleLogImport, [builder.BuildLoadArrayElement(instantiatedArray, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0))]);
             builder.BuildReturn();
         }
     }

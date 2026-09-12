@@ -30,7 +30,7 @@ namespace CommonIR.IR.Grammar.Instructions.Memory
         {
             this.Target = target;
             this.TargetType = targetType;
-            this.ValueType = target.ValueType;
+            this.ValueType = targetType.IsFatPointer ? IRType.Factory.FatPointer : IRType.Factory.Pointer;
 
             target.References.Add(this);
             this.Operands.Add(target);
@@ -41,7 +41,7 @@ namespace CommonIR.IR.Grammar.Instructions.Memory
             this.Target = target;
             this.TargetType = targetType;
             this.Offset = offset;
-            this.ValueType = offset.ValueType;
+            this.ValueType = targetType.IsFatPointer ? IRType.Factory.FatPointer : IRType.Factory.Pointer;
 
             target.References.Add(this);
             offset.References.Add(this);

@@ -1,5 +1,4 @@
 ﻿using CommonIR.IR.Grammar.Instructions;
-using CommonIR.IR.Grammar.Instructions.ControlFlow;
 using CommonIR.IR.Grammar.Objects;
 using System;
 using System.Collections.Generic;

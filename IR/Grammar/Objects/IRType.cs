@@ -94,11 +94,9 @@ namespace CommonIR.IR.Grammar.Objects
 
         public static bool operator ==(IRType? left, IRType? right)
         {
-            if (ReferenceEquals(left, right)) return true;
             if (left is null || right is null) return false;
 
             if (left.DataType != right.DataType) return false;
-
             if (left.UserObject != null && right.UserObject != null && left.UserObject.Equals(right.UserObject)) return true;
 
             return true;

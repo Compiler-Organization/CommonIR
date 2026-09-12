@@ -1,5 +1,4 @@
 ﻿using CommonIR.IR.Grammar.Instructions;
-using CommonIR.IR.Grammar.Instructions.ControlFlow;
 using System.Reflection;
 using System.Reflection.Emit;
 

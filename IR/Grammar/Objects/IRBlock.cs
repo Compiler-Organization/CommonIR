@@ -1,13 +1,9 @@
-﻿using CommonIR.IR.Grammar.Objects;
+﻿using CommonIR.IR.Grammar.Instructions;
 
-namespace CommonIR.IR.Grammar.Instructions.ControlFlow
+namespace CommonIR.IR.Grammar.Objects
 {
-    public class IRBlock : IRVoidInstruction
+    public class IRBlock : IRObject
     {
-        public bool IsVoid { get; } = true;
-
-        public List<IRInstruction> Operands { get; set; } = new List<IRInstruction>();
-
         public IRGrammar? Parent { get; set; }
         /// <summary>
         /// The name of the block. Automatically generated if not defined.

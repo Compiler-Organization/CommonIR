@@ -378,6 +378,19 @@ namespace CommonIR.IR
         }
 
         /// <summary>
+        /// Inserts a loop, repeating its block until the condition is met.
+        /// </summary>
+        /// <param name="condition"></param>
+        /// <param name="block"></param>
+        /// <returns></returns>
+        public IRVoidInstruction BuildLoop(IRValueInstruction condition, IRBlock block)
+        {
+            IRVoidInstruction loop = new IRLoop(condition, block);
+            InsertVoidInstruction(loop);
+            return loop;
+        }
+
+        /// <summary>
         /// Builds a comparsion between two values given the operator.
         /// </summary>
         /// <param name="comparisonOperator"></param>

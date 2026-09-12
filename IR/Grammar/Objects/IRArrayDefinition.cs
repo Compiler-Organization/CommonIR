@@ -25,7 +25,7 @@ namespace CommonIR.IR.Grammar.Objects
 
         internal IRArraySchema(IRType elementType)
         {
-            this.ValueType = new IRType(IRDataTypes.Array, this);
+            this.ValueType = new IRType(IRDataTypes.FatPointer);
             this.ElementType = elementType;
         }
 

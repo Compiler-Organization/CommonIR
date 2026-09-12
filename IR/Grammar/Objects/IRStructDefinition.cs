@@ -71,9 +71,9 @@ namespace CommonIR.IR.Grammar.Objects
         /// <param name="type"></param>
         /// <param name="name"></param>
         /// <returns></returns>
-        public IRStructProperty AddProperty(IRType type, string name)
+        public IRStructProperty AddProperty(string name, IRType type)
         {
-            IRStructProperty property = new IRStructProperty(type, name)
+            IRStructProperty property = new IRStructProperty(name, type)
             {
                 Parent = this,
                 Index = this.Properties.Count,

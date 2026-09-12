@@ -142,7 +142,7 @@ builder.PositionAtStart(mainFunction, mainFunction.Entryblock);
 IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("message", IRDataTypes.String, isMutable: false)]);
 
 // Building a string and calling 'console.log' with it.
-IRValueInstruction helloWorldString = builder.BuildString("Hello, World!");
+IRValueInstruction helloWorldString = builder.BuildConstantString("Hello, World!");
 builder.BuildCall(consoleLogImport, [helloWorldString]);
 builder.BuildReturn();
 
@@ -165,37 +165,153 @@ To see if this module works, create a new file named ``index.html`` and add the 
 
 If you now open the developer console, you should see "Hello, World!" printed to the console.
 
-## Creating a struct
-Creating a struct is done by creating an IRStructProperty for each property, and then calling `BuildInitializeStruct` with the name of the struct and a list of the properties.
+## Creating and instantiating a struct
+Before we can instantiate a struct, we first need to create a schema for it containing the properties we want the struct to contain.
 
-First, create your properties.
+First, create your properties, declaring a name and the type of the property.
 ```csharp
-IRStructProperty myIntProperty = new IRStructProperty(
-    type: new IRType(IRDataTypes.Int32), 
-    name: "myInt", 
-    defaultValue: builder.BuildConstantInteger(IRDataTypes.Int32, 42)
-);
+IRStructProperty messageProperty = new IRStructProperty("message", IRType.Factory.String);
 ```
 
-Then, create the struct.
+Then, create a named struct schema using the previous property. The order of properties reflects its order in memory.
 ```csharp 
-IRStruct myStruct = module.CreateStruct("MyStruct", [myIntProperty]);
+IRStruct structSchema = module.CreateStructSchema("MyStruct", [messageProperty]);
 ```
 
 After this, you can use the struct in your IR code. For example, to create an instance of the struct and initialize it, you can do the following:
 ```csharp
-IRValueInstruction initializedStruct = builder.BuildInitializeStruct(myStruct);
+IRValueInstruction instantiatedStruct = builder.BuildInstantiateStruct(structSchema, [
+    builder.BuildConstantString("Hello, world!") // Initialize messageProperty with a constant string.
+]);
 ```
-This will create a new instance of the struct and initialize it with the default values specified in the properties.
+This will create a new instance of the struct and initialize its properties with the specified values. Keep in mind that property initialization is mapped by index to the property being initialized (value 0 == property 0).
 If no default value is specified, the property will be initialized to zero.
 
-``BuildInitializeStruct`` returns a thin pointer to the struct, which can be used to later access the properties of the struct.
+``BuildInstantiateStruct`` returns a thin pointer to the struct, which can be used to later access the properties of the struct.
 
+## Loading and storing struct properties
 Loading and storing values to properties in structs is simple and straight-forward.
 ```csharp
-IRValueInstruction loadedValue = builder.BuildLoad(initializedStruct, myIntProperty.ValueType, myIntProperty); // 42
+IRValueInstruction loadedValue = builder.BuildLoad(instantiatedStruct, messageProperty.ValueType, messageProperty);
 ```
 
+This value can then be read and, for example, printed to the console like so.
 ```csharp
-builder.BuildStore(initializedStruct, myIntProperty, builder.BuildConstantInteger(IRDataTypes.Int32, 41));
+IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("msg", IRDataTypes.String, isMutable: false)]); // WASM console.log(str) import
+builder.BuildCall(consoleLogImport, [loadedValue]); // "Hello, world!"
+```
+
+If you want to later modify a value of a property in a instantiated struct, you can do the following.
+```csharp
+builder.BuildStore(instantiatedStruct, messageProperty, builder.BuildConstantString("Goodbye, world!"));
+```
+
+Loading the property again now will get the "Goodbye, world!" string instead.
+
+___
+
+## Creating and instantiating an array.
+Before instantiating an array, you first need to create a schema for it describing the type of elements it will hold.
+
+Create a named array schema by specifying the element type:
+```csharp
+IRArraySchema arraySchema = module.CreateArraySchema(IRType.Factory.String);
+```
+
+Once you have a schema, you can use it in your IR code. To create an instance of the array, specify the schema, the array's length, and any initial values:
+```csharp
+IRValueInstruction instantiatedArray = builder.BuildInstantiateArray(arraySchema, 4, [
+    builder.BuildConstantString("Hello, World!")
+]);
+```
+
+This creates a new array of the given length (4 elements, in this case) and initializes its elements with the specified values. As with structs, initialization values are mapped by index to the element being initialized (value 0 == element 0). Any elements without a specified initial value are initialized to zero.
+
+The static size ``4`` can be replaced with an IRValueInstruction to instantiate an array with a dynamic size.
+
+BuildInstantiateArray returns a fat pointer to the array, which can be used to later access its elements.
+
+## Loading and storing array elements
+
+Loading and storing values to elements in an array is simple and straightforward. Since array elements are accessed by index rather than by name, you'll need to supply an index value (as an `IRValueInstruction`) alongside the element type.
+
+To load an element from the array:
+```csharp
+IRValueInstruction loadedValue = builder.BuildLoadArrayElement(instantiatedArray, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0));
+```
+
+Here, `builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0)` creates the index 0, pointing at the first element of the array.
+
+This value can then be used elsewhere, for example passed to an imported function:
+```csharp
+IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("msg", IRDataTypes.String, isMutable: false)]); // WASM console.log(str) import
+builder.BuildCall(consoleLogImport, [loadedValue]); // "Hello, World!"
+```
+
+If you want to modify the value of an element in an instantiated array, you can do the following:
+```csharp
+builder.BuildStoreArrayElement(instantiatedArray, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0), loadedValue);
+```
+This stores `loadedValue` back into element `0` of the array. As with structs, loading the element again afterward will return the newly stored value.
+
+## Loops
+
+Below is a sample app creating a loop with an iterator, looping 10 times from 0 to 9.
+```csharp
+static void BuildLoopApp(IRModule module)
+{
+    (IRFunction function, IRBuilder builder) = SetUpInterface(module); // Not a part of CommonIR.
+    module.EntryPoint = function;
+
+    IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("x", IRDataTypes.Int32, isMutable: false)]);
+
+    IRLocal iterator = function.CreateLocal("iterator", IRType.Factory.Int32, isMutable: true); // iterator = 0
+    IRValueInstruction loopCondition = builder.BuildCompare(IRComparisonOperator.LessThan, iterator, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 10)); // iterator < 10
+
+    IRBlock loopBlock = function.CreateBlock("loopblock");
+    builder.SetCheckpoint(); // Keeping track of where we are before moving to the loop block. 
+    builder.PositionAtStart(function, loopBlock);
+
+    // The body of the loop
+    builder.BuildCall(consoleLogImport, [iterator]);
+    builder.BuildStore(iterator, builder.BuildAdd(iterator, builder.BuildConstantInteger(IRDataTypes.Int32, 1)));
+
+    builder.RestoreCheckpoint(); // Going back to where we left off.
+    builder.BuildLoop(loopCondition, loopBlock);
+
+    builder.BuildReturn();
+}
+```
+
+## Conditional branching
+
+Below is a sample app creating a simple conditional branch, determining if a local with value 0 is less than 10.
+```csharp
+static void BuildConditionalApp(IRModule module)
+{
+    (IRFunction function, IRBuilder builder) = SetUpInterface(module);
+    module.EntryPoint = function;
+
+    IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("x", IRDataTypes.String, isMutable: false)]);
+
+    IRLocal number = function.CreateLocal("number", IRType.Factory.Int32, isMutable: true);
+    IRValueInstruction condition = builder.BuildCompare(IRComparisonOperator.LessThan, number, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 10));
+
+    IRBlock thenBlock = function.CreateBlock("thenBlock");
+    IRBlock elseBlock = function.CreateBlock("elseBlock");
+    builder.SetCheckpoint();
+
+    builder.PositionAtStart(function, thenBlock); // Building the then-block
+    builder.BuildCall(consoleLogImport, [builder.BuildConstantString("Condition evaluated to true")]);
+
+    builder.PositionAtStart(function, elseBlock); // Building the else-block
+    builder.BuildCall(consoleLogImport, [builder.BuildConstantString("Condition evaluated to false")]);
+
+    builder.RestoreCheckpoint();
+    builder.BuildConditionalBranch(condition, thenBlock, elseBlock);
+
+    builder.BuildReturn();
+
+    // "Condition evaluated to true"
+}
 ```
