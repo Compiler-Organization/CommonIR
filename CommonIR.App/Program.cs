@@ -1,5 +1,5 @@
 ﻿using CommonIR.Generators;
-using CommonIR.Generators.CIL;
+using CommonIR.Generators.Binary.CIL;
 using CommonIR.IR;
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Instructions;
@@ -27,7 +27,7 @@ namespace CommonIR.App
 
             IRModule module = new IRModule("test");
 
-            BuildDataApp(module);
+            BuildArrayApp(module);
 
             foreach (SourceFile sourceFile in codeGen.GenerateSourceFiles(module))
             {
@@ -56,7 +56,7 @@ namespace CommonIR.App
             return (mainFunction, builder);
         }
 
-        static void BuildDataApp(IRModule module)
+        static void BuildStructApp(IRModule module)
         {
             (IRFunction function, IRBuilder builder) = SetUpInterface(module);
             module.EntryPoint = function;
@@ -69,24 +69,48 @@ namespace CommonIR.App
                 defaultValue: builder.BuildConstantInteger(IRDataTypes.Int32, 42)
             );
 
-            IRStruct myStruct = module.CreateStruct("MyStruct", [myIntProperty]);
+            IRStructSchema myStruct = module.CreateStructSchema("MyStruct", [myIntProperty]);
 
-            IRValueInstruction _struct = builder.BuildInitializeStruct(myStruct);
-
-            // builder.BuildStore(_struct, myIntProperty, builder.BuildConstantInteger(IRDataTypes.Int32, 42));
+            IRValueInstruction _struct = builder.BuildInstantiateStruct(myStruct);
 
             IRValueInstruction loadedValue = builder.BuildLoad(_struct, myIntProperty.ValueType, myIntProperty);
-
-            //IRValueInstruction array = builder.BuildCreateArray(IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 4));
-            //builder.BuildStoreArrayElement(array, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0), builder.BuildString("Hello, World!"));
-
-            //IRValueInstruction loadedValue = builder.BuildLoadArrayElement(array, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0));
 
             builder.BuildCall(consoleLogImport, [loadedValue]);
 
             builder.BuildStore(_struct, myIntProperty, builder.BuildConstantInteger(IRDataTypes.Int32, 41));
             builder.BuildCall(consoleLogImport, [builder.BuildLoad(_struct, myIntProperty.ValueType, myIntProperty)]);
 
+            builder.BuildReturn();
+        }
+
+        static void BuildArrayApp(IRModule module)
+        {
+            (IRFunction function, IRBuilder builder) = SetUpInterface(module);
+            module.EntryPoint = function;
+
+            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("x", IRDataTypes.String, isMutable: false)]);
+            IRFunction writeToConsole = module.CreateFunction("WriteToConsole", [IRType.Factory.Void], [new IRLocal("msg", IRType.Factory.String, isMutable: true)], isExport: true);
+            IRFunction writeToConsole2 = module.CreateFunction("WriteToConsole2", [IRType.Factory.Void], [new IRLocal("msg", IRType.Factory.String, isMutable: true)], isExport: true);
+
+            IRArraySchema arraySchema = module.CreateArraySchema(IRType.Factory.String);
+
+            IRValueInstruction instantiatedArray = builder.BuildInstantiateArray(arraySchema, 4, [
+                builder.BuildConstantString("Hello, World!")
+            ]);
+
+            IRValueInstruction loadedValue = builder.BuildLoadArrayElement(instantiatedArray, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0));
+
+            builder.BuildCall(writeToConsole, [loadedValue]);
+            builder.BuildReturn();
+
+
+            builder.PositionAtStart(writeToConsole, writeToConsole.Entryblock);
+            builder.BuildCall(writeToConsole2, [writeToConsole.Parameters.First()]);
+            builder.BuildReturn();
+
+
+            builder.PositionAtStart(writeToConsole2, writeToConsole2.Entryblock);
+            builder.BuildCall(consoleLogImport, [writeToConsole2.Parameters[0]]);
             builder.BuildReturn();
         }
     }

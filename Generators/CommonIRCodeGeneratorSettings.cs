@@ -1,5 +1,5 @@
 ﻿using CommonIR.Errors;
-using CommonIR.Generators.CIL;
+using CommonIR.Generators.Binary.CIL;
 using CommonIR.Passes.Optimization;
 using System;
 using System.Collections.Generic;

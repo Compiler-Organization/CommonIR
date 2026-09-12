@@ -395,35 +395,10 @@ namespace CommonIR.IR
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildString(string value)
+        public IRValueInstruction BuildConstantString(string value)
         {
-            IRValueInstruction _string = this.Module.CreateString(value);
+            IRValueInstruction _string = this.Module.CreateConstantString(value);
             return _string;
-        }
-
-        /// <summary>
-        /// Builds a new array declared with specified values.
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="size"></param>
-        /// <param name="values"></param>
-        /// <returns></returns>
-        public IRValueInstruction BuildArray(IRType type, IRValueInstruction size, List<IRValueInstruction> values)
-        {
-            IRValueInstruction array = new IRArray(type, size, values);
-            return array;
-        }
-
-        /// <summary>
-        /// Builds a new array of specified size.
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="size"></param>
-        /// <returns></returns>
-        public IRValueInstruction CreateArray(IRType type, IRValueInstruction size)
-        {
-            IRValueInstruction array = new IRArray(type, size);
-            return array;
         }
 
         /// <summary>
@@ -481,37 +456,73 @@ namespace CommonIR.IR
         }
 
         /// <summary>
-        /// Initializes a struct and stores properties if default values are specified. Returns a thin pointer to the beginning of the struct.
+        /// Instantiates an empty struct and returns a pointer to it.
         /// </summary>
-        /// <param name="_struct"></param>
+        /// <param name="structSchema"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildInitializeStruct(string name, List<IRStructProperty> properties)
+        public IRValueInstruction BuildInstantiateStruct(IRStructSchema structSchema)
         {
-            IRStruct _struct = new IRStruct(name, properties);
-            this.Module.Objects.Add(_struct);
-            return _struct;
+            IRValueInstruction instantiateStruct = new IRInstantiateStruct(structSchema);
+            return instantiateStruct;
         }
 
         /// <summary>
-        /// Initializes a struct and stores properties if default values are specified. Returns a thin pointer to the beginning of the struct.
+        /// Instantiates a struct with the given property values and returns a pointer to it.
         /// </summary>
-        /// <param name="_struct"></param>
+        /// <param name="structSchema"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildInitializeStruct(IRStruct _struct)
+        public IRValueInstruction BuildInstantiateStruct(IRStructSchema structSchema, List<IRValueInstruction> propertyValues)
         {
-            return _struct;
+            IRValueInstruction instantiateStruct = new IRInstantiateStruct(structSchema, propertyValues);
+            return instantiateStruct;
         }
 
         /// <summary>
-        /// Creates an array. Returns either a fat pointer or a pointer, depending on if the size of the array can be evaluated at compile-time.
+        /// Instantiates an array from a schema of a fixed size and returns a fat pointer to it.
         /// </summary>
-        /// <param name="array"></param>
+        /// <param name="arraySchema"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildInitializeArray(IRType elementType, IRValueInstruction size)
+        public IRValueInstruction BuildInstantiateArray(IRArraySchema arraySchema, int size)
         {
-            IRArray array = new IRArray(elementType, size);
-            this.Module.Objects.Add(array);
-            return array;
+            IRInstantiateArray instantiateArray = new IRInstantiateArray(arraySchema, BuildConstantInteger(IRDataTypes.Int32, size));
+            return instantiateArray;
+        }
+
+        /// <summary>
+        /// Instantiates an array from a schema of a fixed size, with explicit element initializers and returns a fat pointer to it.
+        /// </summary>
+        /// <param name="arraySchema"></param>
+        /// <param name="elementValues"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildInstantiateArray(IRArraySchema arraySchema, int size, List<IRValueInstruction> elementValues)
+        {
+            IRInstantiateArray instantiateArray = new IRInstantiateArray(arraySchema, BuildConstantInteger(IRDataTypes.Int32, size), elementValues);
+            return instantiateArray;
+        }
+
+        /// <summary>
+        /// Instantiates an array from a schema of a dynamic size and returns a fat pointer to it.
+        /// </summary>
+        /// <param name="arraySchema"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildInstantiateArray(IRArraySchema arraySchema, IRValueInstruction size)
+        {
+            IRInstantiateArray instantiateArray = new IRInstantiateArray(arraySchema, size);
+            return instantiateArray;
+        }
+
+        /// <summary>
+        /// Instantiates an array from a schema of a dynamic size, with explicit element initializers and returns a fat pointer to it.
+        /// </summary>
+        /// <param name="arraySchema"></param>
+        /// <param name="size"></param>
+        /// <param name="elementValues"></param>
+        /// <returns></returns>
+        public IRValueInstruction BuildInstantiateArray(IRArraySchema arraySchema, IRValueInstruction size, List<IRValueInstruction> elementValues)
+        {
+            IRInstantiateArray instantiateArray = new IRInstantiateArray(arraySchema, size, elementValues);
+            return instantiateArray;
         }
 
         /// <summary>

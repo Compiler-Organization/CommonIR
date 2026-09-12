@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <Folder Include="Documentation\" />
+    <Folder Include="Generators\Textual\Luau\" />
   </ItemGroup>
 
   <ItemGroup>

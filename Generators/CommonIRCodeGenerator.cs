@@ -1,6 +1,6 @@
 ﻿using CommonIR.Errors;
-using CommonIR.Generators.CIL;
-using CommonIR.Generators.WASM;
+using CommonIR.Generators.Binary.CIL;
+using CommonIR.Generators.Binary.WASM;
 using CommonIR.IR.Grammar.Objects;
 using CommonIR.Passes.Optimization;
 using System;

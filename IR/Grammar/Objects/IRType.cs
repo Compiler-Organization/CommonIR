@@ -52,8 +52,6 @@ namespace CommonIR.IR.Grammar.Objects
             IRDataTypes.Pointer
             or IRDataTypes.Struct => 4,
 
-            IRDataTypes.Array when this.UserObject is IRArray array && array.Size.IsConstant => 4,
-
             IRDataTypes.FatPointer
             or IRDataTypes.Array
             or IRDataTypes.String => 8,
@@ -76,9 +74,8 @@ namespace CommonIR.IR.Grammar.Objects
             => this.DataType switch
             {
                 IRDataTypes.FatPointer
-                or IRDataTypes.String => true,
-
-                IRDataTypes.Array when this.UserObject is IRArray array && !array.Size.IsConstant => true,
+                or IRDataTypes.String
+                or IRDataTypes.Array => true,
 
                 _ => false,
             };

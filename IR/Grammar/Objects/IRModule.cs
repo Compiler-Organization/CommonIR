@@ -144,9 +144,9 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
-        public IRString CreateString(string value)
+        public IRConstantString CreateConstantString(string value)
         {
-            IRString _string = new IRString(value)
+            IRConstantString _string = new IRConstantString(value)
             {
                 Parent = this,
                 //Offset = ConstantsSize
@@ -165,30 +165,10 @@ namespace CommonIR.IR.Grammar.Objects
         /// Creates an array, adds it to the modules objects and returns it.
         /// </summary>
         /// <param name="type"></param>
-        /// <param name="size"></param>
         /// <returns></returns>
-        public IRArray CreateArray(IRType type, IRValueInstruction size)
+        public IRArraySchema CreateArraySchema(IRType type)
         {
-            IRArray array = new IRArray(type, size)
-            {
-                Parent = this,
-            };
-
-            this.Objects.Add(array);
-
-            return array;
-        }
-
-        /// <summary>
-        /// Creates an array with elements, adds it to the modules objects and returns it.
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="size"></param>
-        /// <param name="elements"></param>
-        /// <returns></returns>
-        public IRArray CreateArray(IRType type, IRValueInstruction size, List<IRValueInstruction> elements)
-        {
-            IRArray array = new IRArray(type, size, elements)
+            IRArraySchema array = new IRArraySchema(type)
             {
                 Parent = this,
             };
@@ -202,9 +182,9 @@ namespace CommonIR.IR.Grammar.Objects
         /// Creates a named struct with no properties ,adds it to the moduels constants and returns it.
         /// </summary>
         /// <returns></returns>
-        public IRStruct CreateStruct(string name)
+        public IRStructSchema CreateStructSchema(string name)
         {
-            IRStruct _struct = new IRStruct(name, new List<IRStructProperty>())
+            IRStructSchema _struct = new IRStructSchema(name, new List<IRStructProperty>())
             {
                 Parent = this,
             };
@@ -218,9 +198,9 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         /// <param name="properties"></param>
         /// <returns></returns>
-        public IRStruct CreateStruct(string name, List<IRStructProperty> properties)
+        public IRStructSchema CreateStructSchema(string name, List<IRStructProperty> properties)
         {
-            IRStruct _struct = new IRStruct(name, properties) 
+            IRStructSchema _struct = new IRStructSchema(name, properties) 
             {
                 Parent = this,
             };
