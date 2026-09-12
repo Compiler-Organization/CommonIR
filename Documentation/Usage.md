@@ -1,6 +1,6 @@
 # Usage
-This document iterates how one would integrate CommonIR into their own compiler project.
-This document servers as an example-riddled guide to using the IR.
+This document goes over how one would integrate CommonIR into their own compiler project.
+This document serves as an example-riddled guide to using the IR.
 
 # Table of Contents
 * [Getting Started](#getting-started)
