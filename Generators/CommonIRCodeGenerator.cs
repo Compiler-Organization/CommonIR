@@ -1,6 +1,7 @@
 ﻿using CommonIR.Errors;
 using CommonIR.Generators.Binary.CIL;
 using CommonIR.Generators.Binary.WASM;
+using CommonIR.Generators.Textual.HLSL;
 using CommonIR.IR.Grammar.Objects;
 using CommonIR.Passes.Optimization;
 using System;
@@ -35,6 +36,12 @@ namespace CommonIR.Generators
                     {
                         CILGenerator cilGenerator = new CILGenerator(module, Settings.TargetConfiguration as CommonIRCILConfiguration ?? throw ErrorHandler.Create("Could not create target configuration for Common Intermediate Language."));
                         return cilGenerator.GenerateSourceFiles();
+                    }
+
+                case CommonIRTargets.HLSL:
+                    {
+                        HLSLGenerator hlslGenerator = new HLSLGenerator(module, Settings.TargetConfiguration as CommonIRHLSLConfiguration ?? throw ErrorHandler.Create("Could not create target configuration for HLSL."));
+                        return hlslGenerator.GenerateSourceFiles();
                     }
 
                 default:

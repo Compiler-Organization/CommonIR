@@ -34,7 +34,7 @@
         {
             if (this.Values != null)
             {
-                return $"{new string('\t', indentation)}return {string.Join(", ", $"({this.Values.Select(v => v.Dump(0))})")}";
+                return $"{new string('\t', indentation)}return ({string.Join(", ", this.Values.Select(v => v.Dump(0)))})";
             }
             else
             {

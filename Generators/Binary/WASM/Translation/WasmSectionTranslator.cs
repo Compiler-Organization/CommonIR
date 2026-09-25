@@ -191,7 +191,7 @@ namespace CommonIR.Generators.Binary.WASM.Translation
                     IsMutable = global.IsMutable,
                     Type = WasmTypeTranslator.TranslateIRType(global.ValueType),
                     InitializationExpression = [
-                        .. new WasmInstructionEmitter(this.Module.EntryPoint ?? null, this.FactorizedFunctions).EmitInstruction(global.InitialValue), 
+                        .. new WasmInstructionEmitter(this.Module.EntryPoint ?? throw ErrorHandler.Create("Cannot initialize globals if no entrypoint is defined."), this.FactorizedFunctions).EmitInstruction(global.InitialValue), 
                         (byte)WasmOpCodes.End
                     ]
                 };

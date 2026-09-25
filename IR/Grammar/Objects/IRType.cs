@@ -80,6 +80,9 @@ namespace CommonIR.IR.Grammar.Objects
                 _ => false,
             };
 
+        public bool IsScalarType
+            => !this.IsReferenceType;
+
         public string Dump(int indentation)
         {
             if (UserObject != null)

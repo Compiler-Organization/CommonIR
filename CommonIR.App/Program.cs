@@ -1,5 +1,6 @@
 ﻿using CommonIR.Generators;
 using CommonIR.Generators.Binary.CIL;
+using CommonIR.Generators.Textual.HLSL;
 using CommonIR.IR;
 using CommonIR.IR.Grammar;
 using CommonIR.IR.Grammar.Instructions;
@@ -10,6 +11,7 @@ using CommonIR.Passes.Optimization;
 // This is used to test functionality as its being developed.
 
 using System.Text;
+using Wasmtime;
 
 namespace CommonIR.App
 {
@@ -27,24 +29,70 @@ namespace CommonIR.App
 
             IRModule module = new IRModule("test");
 
-            BuildConditionalApp(module);
+            BuildHelloWorldApp(module);
 
-            foreach (SourceFile sourceFile in codeGen.GenerateSourceFiles(module))
+
+            List<SourceFile> sourceFiles = codeGen.GenerateSourceFiles(module);
+
+            if(true)
             {
-                string filename = $"{sourceFile.Name}{sourceFile.Extension}";
-                if(sourceFile.Extension == ".wasm")
+                foreach (SourceFile sourceFile in sourceFiles)
                 {
-                    Console.WriteLine($"{filename} ({sourceFile.Data.Length} bytes): 0x{string.Join(", 0x", sourceFile.Data.Select(t => t.ToString("X2")))}");
+                    string filename = $"{sourceFile.Name}{sourceFile.Extension}";
+                    if (sourceFile.Extension == ".wasm")
+                    {
+                        Console.WriteLine($"{filename} ({sourceFile.Data.Length} bytes): 0x{string.Join(", 0x", sourceFile.Data.Select(t => t.ToString("X2")))}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"{filename} ({sourceFile.Data.Length} bytes): {Encoding.UTF8.GetString(sourceFile.Data)}");
+                    }
+                    Console.WriteLine();
+                    sourceFile.WriteToDisk();
                 }
-                else
-                {
-                    Console.WriteLine($"{filename} ({sourceFile.Data.Length} bytes): {Encoding.UTF8.GetString(sourceFile.Data)}");
-                }
-                Console.WriteLine();
-                sourceFile.WriteToDisk();
+            }
+            else
+            {
+                RunWithWasmtime(module, sourceFiles);
             }
 
             Console.WriteLine(module.Dump(0));
+        }
+
+        static void RunWithWasmtime(IRModule irModule, List<SourceFile> sourceFiles)
+        {
+            using Engine engine = new Engine();
+            using Module module = Module.FromBytes(engine, irModule.Name, sourceFiles.First(f => f.Extension == ".wasm").Data);
+            using Linker linker = new Linker(engine);
+            using Store store = new Store(engine);
+
+            linker.Define("console", "log", Function.FromCallback<int, int>(store, (ptr, len) => Console.WriteLine($"console.log: Ptr:{ptr}, Len:{len}")));
+            linker.Define("console", "error", Function.FromCallback<int, int>(store, (ptr, len) => Console.WriteLine($"console.error: Ptr:{ptr}, Len:{len}")));
+
+            Instance instance = linker.Instantiate(store, module);
+
+            Action entryPoint = instance.GetAction(irModule.EntryPoint!.Name)!;
+            entryPoint();
+        }
+
+        static (IRFunction, IRBuilder) SetUpShaderInterface(IRModule module)
+        {
+            IRFunction mainFunction = module.CreateFunction("main", [new IRType(IRDataTypes.Array, module.CreateArraySchema(IRType.Factory.Float32))], [new IRLocal("NumberA", IRType.Factory.Float32, true), new IRLocal("NumberB", IRType.Factory.Float32, true)], isExport: true);
+            IRBuilder builder = new IRBuilder(module, mainFunction, mainFunction.Entryblock);
+            builder.PositionAtStart(mainFunction, mainFunction.Entryblock);
+
+            return (mainFunction, builder);
+        }
+
+        static void BuildComputationalShaderApp(IRModule module)
+        {
+            (IRFunction function, IRBuilder builder) = SetUpShaderInterface(module);
+            module.EntryPoint = function;
+
+            IRArraySchema outputBufferSchema = module.CreateArraySchema(IRType.Factory.Float32);
+            IRLocal outputBuffer = new IRLocal("OutputBuffer", new IRType(IRDataTypes.Array, outputBufferSchema), true);
+
+            builder.BuildStoreArrayElement(outputBuffer, IRType.Factory.Float32, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0), builder.BuildAdd(function.Parameters[0], function.Parameters[1]));
         }
 
         static (IRFunction, IRBuilder) SetUpInterface(IRModule module)
@@ -122,6 +170,17 @@ namespace CommonIR.App
             builder.BuildStoreArrayElement(instantiatedArray, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0), loadedValue);
 
             builder.BuildCall(consoleLogImport, [builder.BuildLoadArrayElement(instantiatedArray, IRType.Factory.String, builder.BuildConstantInteger(IRType.Factory.Int32.DataType, 0))]);
+            builder.BuildReturn();
+        }
+
+        static void BuildHelloWorldApp(IRModule module)
+        {
+            (IRFunction function, IRBuilder builder) = SetUpInterface(module);
+            module.EntryPoint = function;
+
+            IRFunctionImport consoleLogImport = module.CreateFunctionImport("console", "log", IRType.Factory.Void, [new IRLocal("msg", IRDataTypes.String, isMutable: false)]);
+
+            builder.BuildCall(consoleLogImport, [builder.BuildConstantString("Hello, world!")]);
             builder.BuildReturn();
         }
     }

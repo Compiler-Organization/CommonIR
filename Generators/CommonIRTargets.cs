@@ -8,5 +8,6 @@ namespace CommonIR.Generators
     {
         WebAssembly,
         CommonIntermediateLanguage,
+        HLSL,
     }
 }

@@ -20,6 +20,11 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         public List<IRInstruction> Instructions { get; set; } = new List<IRInstruction>();
 
+        /// <summary>
+        /// Represents the speculated amount of logic gates required for the block. Calculated after the target has been emitted.
+        /// </summary>
+        public ulong SpeculativeCircuitComplexity { get; set; }
+
         public IRBlock(string name) 
         {
             this.Name = name;
@@ -40,7 +45,7 @@ namespace CommonIR.IR.Grammar.Objects
 
         public string Dump(int indentation)
         {
-            return $"{new string('\t', indentation)}block %{Name} \n{new string('\t', indentation)}{{\n{string.Join("\n", Instructions.Select(i => i.Dump(indentation + 1)))}\n{new string('\t', indentation)}}}";
+            return $"{new string('\t', indentation)}block %{Name} (circuit complexity: {this.SpeculativeCircuitComplexity}) \n{new string('\t', indentation)}{{\n{string.Join("\n", Instructions.Select(i => i.Dump(indentation + 1)))}\n{new string('\t', indentation)}}}";
         }
     }
 }

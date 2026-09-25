@@ -33,7 +33,14 @@ namespace CommonIR.Generators.Binary.WASM.Emission
             if(function != null)
             {
                 this.ScratchPool = new WasmScratchPool(function);
+                BlockContextStack.Push(function.Entryblock);
             }
+        }
+
+        WasmOpCodes AddComplexity(WasmOpCodes opCode)
+        {
+            BlockContextStack.Peek().SpeculativeCircuitComplexity += (ulong)WasmOpCodeComplexity.Of(opCode);
+            return opCode;
         }
 
         public List<byte> EmitInstructions(List<IRInstruction> instructions)
@@ -58,12 +65,12 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                         throw ErrorHandler.Create("Cached instruction is a reference type but contains no length companion.");
                     }
 
-                    return [(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(localCache.Offset),
-                            (byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(localCache.LengthCompanion.Offset)];
+                    return [(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(localCache.Offset),
+                            (byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(localCache.LengthCompanion.Offset)];
                 }
                 else
                 {
-                    return [(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(localCache.Offset)];
+                    return [(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(localCache.Offset)];
                 }
             }
 
@@ -98,7 +105,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 IRInstantiateStruct instantiateStruct => EmitInstantiateStruct(instantiateStruct),
                 IRStructProperty property => EmitProperty(property),
 
-                _ => throw new NotImplementedException($"No Wasm translation implemented for instruction '{instruction.GetType().Name}'")
+                _ => throw ErrorHandler.CreateNotImplimented($"No Wasm translation implemented for instruction '{instruction.GetType().Name}'")
             });
 
             if (instruction is IRValueInstruction valInstruction
@@ -120,17 +127,17 @@ namespace CommonIR.Generators.Binary.WASM.Emission
 
                     List<byte> interceptFat = [];
 
-                    interceptFat.AddRange([(byte)WasmOpCodes.Local_set, .. LEB128.EncodeUnsigned(lengthCompanion.Offset)]);
-                    interceptFat.AddRange([(byte)WasmOpCodes.Local_set, .. LEB128.EncodeUnsigned(newLocalCache.Offset)]);
+                    interceptFat.AddRange([(byte)AddComplexity(WasmOpCodes.Local_set), .. LEB128.EncodeUnsigned(lengthCompanion.Offset)]);
+                    interceptFat.AddRange([(byte)AddComplexity(WasmOpCodes.Local_set), .. LEB128.EncodeUnsigned(newLocalCache.Offset)]);
 
-                    interceptFat.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(newLocalCache.Offset)]);
-                    interceptFat.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(lengthCompanion.Offset)]);
+                    interceptFat.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(newLocalCache.Offset)]);
+                    interceptFat.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(lengthCompanion.Offset)]);
 
                     bytecode.AddRange(interceptFat);
                 }
                 else
                 {
-                    bytecode.AddRange([(byte)WasmOpCodes.Local_tee, .. LEB128.EncodeUnsigned(newLocalCache.Offset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_tee), .. LEB128.EncodeUnsigned(newLocalCache.Offset)]);
                 }
             }
 
@@ -139,12 +146,12 @@ namespace CommonIR.Generators.Binary.WASM.Emission
 
         public byte[] EmitPanic(IRPanic panic)
         {
-            return [.. EmitInstruction(panic.Message), (byte)WasmOpCodes.Call, .. LEB128.EncodeUnsigned(this.FactorizedFunctions.Panic.Offset)];
+            return [.. EmitInstruction(panic.Message), (byte)AddComplexity(WasmOpCodes.Call), .. LEB128.EncodeUnsigned(this.FactorizedFunctions.Panic.Offset)];
         }
 
         public byte[] EmitMalloc(IRMalloc malloc)
         {
-            return [.. EmitInstruction(malloc.Bytes), (byte)WasmOpCodes.Call, .. LEB128.EncodeUnsigned(this.FactorizedFunctions.Malloc.Offset)];
+            return [.. EmitInstruction(malloc.Bytes), (byte)AddComplexity(WasmOpCodes.Call), .. LEB128.EncodeUnsigned(this.FactorizedFunctions.Malloc.Offset)];
         }
 
         public byte[] EmitBytes(IRBytes bytes)
@@ -164,7 +171,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
             }
 
             IRLocal structBasePointer = ScratchPool!.Borrow(IRDataTypes.Pointer);
-            bytecode.AddRange([(byte)WasmOpCodes.Local_tee, .. LEB128.EncodeUnsigned(structBasePointer.Offset)]);
+            bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_tee), .. LEB128.EncodeUnsigned(structBasePointer.Offset)]);
 
             for (int i = 0; i < instantiateStruct.PropertyValues.Count; i++)
             {
@@ -182,25 +189,25 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 {
                     IRLocal lengthScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
 
-                    bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(structBasePointer.Offset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(structBasePointer.Offset)]);
 
                     bytecode.AddRange(EmitInstruction(propertyValue));
-                    bytecode.AddRange([(byte)WasmOpCodes.Local_set, .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_set), .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
 
-                    bytecode.AddRange([(byte)WasmOpCodes.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(propertyOffset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_store), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(propertyOffset)]);
 
-                    bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(structBasePointer.Offset)]);
-                    bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
-                    bytecode.AddRange([(byte)WasmOpCodes.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(propertyOffset + 4)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(structBasePointer.Offset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_store), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(propertyOffset + 4)]);
 
                     ScratchPool.Return(lengthScratch);
                 }
                 else
                 {
-                    bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(structBasePointer.Offset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(structBasePointer.Offset)]);
                     bytecode.AddRange(EmitInstruction(propertyValue));
 
-                    bytecode.AddRange([(byte)WasmOpCodes.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(propertyOffset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_store), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(propertyOffset)]);
                 }
             }
 
@@ -231,7 +238,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 bytecode.AddRange(EmitInstruction(new IRMalloc(new IRMultiply(instantiateArray.Size, new IRConstantInteger(IRDataTypes.Int32, instantiateArray.ArraySchema.ElementType.Width)))));
             }
 
-            bytecode.AddRange([(byte)WasmOpCodes.Local_tee, .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
+            bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_tee), .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
 
             if (instantiateArray.ElementValues.Count <= 0)
             {
@@ -239,36 +246,36 @@ namespace CommonIR.Generators.Binary.WASM.Emission
             }
 
             IRLocal arrayPointer = ScratchPool!.Borrow(IRDataTypes.Pointer);
-            bytecode.AddRange([(byte)WasmOpCodes.Local_set, .. LEB128.EncodeUnsigned(arrayPointer.Offset)]);
+            bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_set), .. LEB128.EncodeUnsigned(arrayPointer.Offset)]);
 
             for(int i = 0; i < instantiateArray.ElementValues.Count; i++)
             {
-                bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(arrayPointer.Offset)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(arrayPointer.Offset)]);
                 bytecode.AddRange(EmitInstruction(instantiateArray.ElementValues[i]));
 
                 if(instantiateArray.ArraySchema.ElementType.IsFatPointer)
                 {
                     IRLocal elementLength = ScratchPool!.Borrow(IRDataTypes.Int32);
 
-                    bytecode.AddRange([(byte)WasmOpCodes.Local_set, .. LEB128.EncodeUnsigned(elementLength.Offset)]);
-                    bytecode.AddRange([(byte)WasmOpCodes.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned((ulong)(i * instantiateArray.ArraySchema.ElementType.Width))]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_set), .. LEB128.EncodeUnsigned(elementLength.Offset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_store), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned((ulong)(i * instantiateArray.ArraySchema.ElementType.Width))]);
 
-                    bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(arrayPointer.Offset)]);
-                    bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(elementLength.Offset)]);
-                    bytecode.AddRange([(byte)WasmOpCodes.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned((ulong)(i * instantiateArray.ArraySchema.ElementType.Width + 4))]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(arrayPointer.Offset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(elementLength.Offset)]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_store), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned((ulong)(i * instantiateArray.ArraySchema.ElementType.Width + 4))]);
 
                     ScratchPool!.Return(elementLength);
                 }
                 else
                 {
-                    bytecode.AddRange([(byte)WasmOpCodes.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned((ulong)(i * instantiateArray.ArraySchema.ElementType.Width))]);
+                    bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_store), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned((ulong)(i * instantiateArray.ArraySchema.ElementType.Width))]);
                 }
 
                 Console.WriteLine($"[{i}]: {instantiateArray.ElementValues[i].Dump(0)}");
             }
 
-            bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(arrayPointer.Offset)]);
-            bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
+            bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(arrayPointer.Offset)]);
+            bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
 
             ScratchPool!.Return(arrayPointer);
             ScratchPool!.Return(lengthScratch);
@@ -281,10 +288,10 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 .. EmitInstruction(add.Left),
                 .. EmitInstruction(add.Right),
                 add.ValueType.DataType switch {
-                    IRDataTypes.Int32 => (byte)WasmOpCodes.I32_add,
-                    IRDataTypes.Int64 => (byte)WasmOpCodes.I64_add,
-                    IRDataTypes.Float32 => (byte)WasmOpCodes.F32_add,
-                    IRDataTypes.Float64 => (byte)WasmOpCodes.F64_add,
+                    IRDataTypes.Int32 => (byte)AddComplexity(WasmOpCodes.I32_add),
+                    IRDataTypes.Int64 => (byte)AddComplexity(WasmOpCodes.I64_add),
+                    IRDataTypes.Float32 => (byte)AddComplexity(WasmOpCodes.F32_add),
+                    IRDataTypes.Float64 => (byte)AddComplexity(WasmOpCodes.F64_add),
                     _ => throw ErrorHandler.Create($"IRAdd does not support operands of type {add.ValueType.Dump(0)}")
                 }
             ];
@@ -296,10 +303,10 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 .. EmitInstruction(add.Left),
                 .. EmitInstruction(add.Right),
                 add.ValueType.DataType switch {
-                    IRDataTypes.Int32 => (byte)WasmOpCodes.I32_sub,
-                    IRDataTypes.Int64 => (byte)WasmOpCodes.I64_sub,
-                    IRDataTypes.Float32 => (byte)WasmOpCodes.F32_sub,
-                    IRDataTypes.Float64 => (byte)WasmOpCodes.F64_sub,
+                    IRDataTypes.Int32 => (byte)AddComplexity(WasmOpCodes.I32_sub),
+                    IRDataTypes.Int64 => (byte)AddComplexity(WasmOpCodes.I64_sub),
+                    IRDataTypes.Float32 => (byte)AddComplexity(WasmOpCodes.F32_sub),
+                    IRDataTypes.Float64 => (byte)AddComplexity(WasmOpCodes.F64_sub),
                     _ => throw ErrorHandler.Create($"IRSubtract does not support operands of type {add.ValueType.Dump(0)}")
                 }
             ];
@@ -311,10 +318,10 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 .. EmitInstruction(add.Left),
                 .. EmitInstruction(add.Right),
                 add.ValueType.DataType switch {
-                    IRDataTypes.Int32 => (byte)WasmOpCodes.I32_mul,
-                    IRDataTypes.Int64 => (byte)WasmOpCodes.I64_mul,
-                    IRDataTypes.Float32 => (byte)WasmOpCodes.F32_mul,
-                    IRDataTypes.Float64 => (byte)WasmOpCodes.F64_mul,
+                    IRDataTypes.Int32 => (byte)AddComplexity(WasmOpCodes.I32_mul),
+                    IRDataTypes.Int64 => (byte)AddComplexity(WasmOpCodes.I64_mul),
+                    IRDataTypes.Float32 => (byte)AddComplexity(WasmOpCodes.F32_mul),
+                    IRDataTypes.Float64 => (byte)AddComplexity(WasmOpCodes.F64_mul),
                     _ => throw ErrorHandler.Create($"IRMultiply does not support operands of type {add.ValueType.Dump(0)}")
                 }
             ];
@@ -326,14 +333,14 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                .. EmitInstruction(divide.Left),
                 .. EmitInstruction(divide.Right),
                 divide.ValueType.DataType switch {
-                    IRDataTypes.Int32 => (byte)WasmOpCodes.I32_div_s,
-                    IRDataTypes.UInt32 => (byte)WasmOpCodes.I32_div_u,
+                    IRDataTypes.Int32 => (byte)AddComplexity(WasmOpCodes.I32_div_s),
+                    IRDataTypes.UInt32 => (byte)AddComplexity(WasmOpCodes.I32_div_u),
 
-                    IRDataTypes.Int64 => (byte)WasmOpCodes.I64_div_s,
-                    IRDataTypes.UInt64 => (byte)WasmOpCodes.I64_div_u,
+                    IRDataTypes.Int64 => (byte)AddComplexity(WasmOpCodes.I64_div_s),
+                    IRDataTypes.UInt64 => (byte)AddComplexity(WasmOpCodes.I64_div_u),
 
-                    IRDataTypes.Float32 => (byte)WasmOpCodes.F32_div,
-                    IRDataTypes.Float64 => (byte)WasmOpCodes.F64_div,
+                    IRDataTypes.Float32 => (byte)AddComplexity(WasmOpCodes.F32_div),
+                    IRDataTypes.Float64 => (byte)AddComplexity(WasmOpCodes.F64_div),
                     _ => throw ErrorHandler.Create($"IRDivide does not support operands of type {divide.ValueType.Dump(0)}")
                 }
            ];
@@ -343,7 +350,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
         {
             List<byte> bytecode = [];
 
-            bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(local.Offset)]);
+            bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(local.Offset)]);
 
             if (local.ValueType.IsFatPointer)
             {
@@ -352,7 +359,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                     throw ErrorHandler.Create($"Local load is a reference type but has no length companion.");
                 }
 
-                bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(local.LengthCompanion.Offset)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(local.LengthCompanion.Offset)]);
             }
 
             return bytecode.ToArray();
@@ -362,7 +369,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
         {
             List<byte> bytecode = [];
 
-            bytecode.AddRange([(byte)WasmOpCodes.Global_get, .. LEB128.EncodeUnsigned(global.Offset)]);
+            bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Global_get), .. LEB128.EncodeUnsigned(global.Offset)]);
 
             if (global.ValueType.IsFatPointer)
             {
@@ -371,7 +378,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                     throw ErrorHandler.Create($"Global load is a reference type but has no length companion.");
                 }
 
-                bytecode.AddRange([(byte)WasmOpCodes.Global_get, .. LEB128.EncodeUnsigned(global.LengthCompanion.Offset)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Global_get), .. LEB128.EncodeUnsigned(global.LengthCompanion.Offset)]);
             }
 
             return bytecode.ToArray();
@@ -380,8 +387,8 @@ namespace CommonIR.Generators.Binary.WASM.Emission
         public byte[] EmitLoadString(IRConstantString str)
         {
             List<byte> bytecode = [
-                (byte)WasmOpCodes.I32_const, .. LEB128.EncodeSigned((int)str.Offset),
-                (byte)WasmOpCodes.I32_const, .. LEB128.EncodeSigned(Encoding.UTF8.GetBytes(str.Value).LongLength),
+                (byte)AddComplexity(WasmOpCodes.I32_const), .. LEB128.EncodeSigned((int)str.Offset),
+                (byte)AddComplexity(WasmOpCodes.I32_const), .. LEB128.EncodeSigned(Encoding.UTF8.GetBytes(str.Value).LongLength),
             ];
 
             return bytecode.ToArray();
@@ -389,7 +396,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
 
         public byte[] EmitProperty(IRStructProperty property)
         {
-            return [(byte)WasmOpCodes.I32_const, .. LEB128.EncodeSigned(property.Offset)];
+            return [(byte)AddComplexity(WasmOpCodes.I32_const), .. LEB128.EncodeSigned(property.Offset)];
         }
 
         public byte[] EmitStore(IRStore store)
@@ -409,10 +416,10 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                                 throw ErrorHandler.Create($"Cannot store to local as its length companion is null.");
                             }
 
-                            bytecode.AddRange([(byte)WasmOpCodes.Local_set, .. LEB128.EncodeUnsigned(local.LengthCompanion.Offset)]);
+                            bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_set), .. LEB128.EncodeUnsigned(local.LengthCompanion.Offset)]);
                         }
 
-                        bytecode.AddRange([(byte)WasmOpCodes.Local_set, .. LEB128.EncodeUnsigned(local.Offset)]);
+                        bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_set), .. LEB128.EncodeUnsigned(local.Offset)]);
 
                         return bytecode.ToArray();
                     }
@@ -428,10 +435,10 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                                 throw ErrorHandler.Create($"Cannot store to global as its length companion is null.");
                             }
 
-                            bytecode.AddRange([(byte)WasmOpCodes.Global_set, .. LEB128.EncodeUnsigned(global.LengthCompanion.Offset)]);
+                            bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Global_set), .. LEB128.EncodeUnsigned(global.LengthCompanion.Offset)]);
                         }
 
-                        bytecode.AddRange([(byte)WasmOpCodes.Global_set, .. LEB128.EncodeUnsigned(global.Offset)]);
+                        bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Global_set), .. LEB128.EncodeUnsigned(global.Offset)]);
 
                         return bytecode.ToArray();
                     }
@@ -442,7 +449,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
             if (store.Offset != null)
             {
                 bytecode.AddRange(EmitInstruction(store.Offset));
-                bytecode.AddRange([(byte)WasmOpCodes.I32_add]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_add)]);
             }
 
             if (store.Value.ValueType.IsFatPointer)
@@ -455,16 +462,16 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 IRLocal addrScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
                 IRLocal lengthScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
 
-                bytecode.AddRange([(byte)WasmOpCodes.Local_tee, .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_tee), .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
 
                 bytecode.AddRange(EmitInstruction(store.Value));
-                bytecode.AddRange([(byte)WasmOpCodes.Local_set, .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_set), .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
 
-                bytecode.AddRange([(byte)WasmOpCodes.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_store), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
 
-                bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
-                bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
-                bytecode.AddRange([(byte)WasmOpCodes.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(4)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(addrScratch.Offset)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(lengthScratch.Offset)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_store), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(4)]);
 
                 ScratchPool.Return(addrScratch);
                 ScratchPool.Return(lengthScratch);
@@ -472,7 +479,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
             else
             {
                 bytecode.AddRange(EmitInstruction(store.Value));
-                bytecode.AddRange([(byte)WasmOpCodes.I32_store, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_store), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
             }
 
             return bytecode.ToArray();
@@ -496,7 +503,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
             if (load.Offset != null)
             {
                 bytecode.AddRange(EmitInstruction(load.Offset));
-                bytecode.AddRange([(byte)WasmOpCodes.I32_add]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_add)]);
             }
 
             if (load.TargetType.IsFatPointer)
@@ -508,16 +515,16 @@ namespace CommonIR.Generators.Binary.WASM.Emission
 
                 IRLocal baseAddressScratch = ScratchPool!.Borrow(IRDataTypes.Int32);
 
-                bytecode.AddRange([(byte)WasmOpCodes.Local_tee, .. LEB128.EncodeUnsigned(baseAddressScratch.Offset)]);
-                bytecode.AddRange([(byte)WasmOpCodes.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_tee), .. LEB128.EncodeUnsigned(baseAddressScratch.Offset)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_load), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
 
-                bytecode.AddRange([(byte)WasmOpCodes.Local_get, .. LEB128.EncodeUnsigned(baseAddressScratch.Offset)]);
-                bytecode.AddRange([(byte)WasmOpCodes.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(4)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.Local_get), .. LEB128.EncodeUnsigned(baseAddressScratch.Offset)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_load), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(4)]);
                 ScratchPool.Return(baseAddressScratch);
             }
             else
             {
-                bytecode.AddRange([(byte)WasmOpCodes.I32_load, .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
+                bytecode.AddRange([(byte)AddComplexity(WasmOpCodes.I32_load), .. LEB128.EncodeUnsigned(2), .. LEB128.EncodeUnsigned(0)]);
             }
 
             return bytecode.ToArray();
@@ -535,7 +542,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
 
             return [
                 .. bytes, 
-                (byte)WasmOpCodes.Return
+                (byte)AddComplexity(WasmOpCodes.Return)
             ];
         }
 
@@ -543,10 +550,10 @@ namespace CommonIR.Generators.Binary.WASM.Emission
         {
             return [constInt.IntegerType switch 
             {
-                IRDataTypes.Int32 => (byte)WasmOpCodes.I32_const,
-                IRDataTypes.Int64 => (byte)WasmOpCodes.I64_const,
-                IRDataTypes.Float32 => (byte)WasmOpCodes.F32_const,
-                IRDataTypes.Float64 => (byte)WasmOpCodes.F64_const,
+                IRDataTypes.Int32 => (byte)AddComplexity(WasmOpCodes.I32_const),
+                IRDataTypes.Int64 => (byte)AddComplexity(WasmOpCodes.I64_const),
+                IRDataTypes.Float32 => (byte)AddComplexity(WasmOpCodes.F32_const),
+                IRDataTypes.Float64 => (byte)AddComplexity(WasmOpCodes.F64_const),
 
                 _ => throw ErrorHandler.Create($"Cannot emit constant of type {constInt.IntegerType}")
             }, .. LEB128.EncodeSigned(constInt.Value)];
@@ -556,7 +563,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
         {
             return [
                 .. call.Arguments.SelectMany(EmitInstruction),
-                (byte)WasmOpCodes.Call,
+                (byte)AddComplexity(WasmOpCodes.Call),
                 .. LEB128.EncodeUnsigned(call.Function.Offset)
             ];
         }
@@ -564,16 +571,29 @@ namespace CommonIR.Generators.Binary.WASM.Emission
         public byte[] EmitBlock(IRBlock block)
         {
             List<byte> bytes = [
-                (byte)WasmOpCodes.Block,
+                (byte)AddComplexity(WasmOpCodes.Block),
                 (byte)WasmTypeTranslator.TranslateIRType(block.ReturnType)
             ];
 
             BlockContextStack.Push(block);
             bytes.AddRange(EmitInstructions(block.Instructions));
+            ulong complexity = BlockContextStack.Peek().SpeculativeCircuitComplexity;
             BlockContextStack.Pop();
+            BlockContextStack.Peek().SpeculativeCircuitComplexity += complexity;
 
-            bytes.Add((byte)WasmOpCodes.End);
+            bytes.Add((byte)AddComplexity(WasmOpCodes.End));
 
+            return bytes.ToArray();
+        }
+
+        public byte[] EmitBlockNoWrap(IRBlock block)
+        {
+            List<byte> bytes = [];
+            BlockContextStack.Push(block);
+            bytes.AddRange(EmitInstructions(block.Instructions));
+            ulong complexity = BlockContextStack.Peek().SpeculativeCircuitComplexity;
+            BlockContextStack.Pop();
+            BlockContextStack.Peek().SpeculativeCircuitComplexity += complexity;
             return bytes.ToArray();
         }
 
@@ -583,18 +603,18 @@ namespace CommonIR.Generators.Binary.WASM.Emission
 
             bytes.AddRange([
                 .. EmitInstruction(conditionalBranch.Condition),
-                (byte)WasmOpCodes.If,
+                (byte)AddComplexity(WasmOpCodes.If),
                 (byte)WasmTypeTranslator.TranslateIRType(conditionalBranch.ThenBlock.ReturnType),
-                .. EmitInstructions(conditionalBranch.ThenBlock.Instructions),
+                .. EmitBlockNoWrap(conditionalBranch.ThenBlock),
             ]);
 
             if (conditionalBranch.HasElseBlock)
             {
-                bytes.Add((byte)WasmOpCodes.Else);
-                bytes.AddRange(EmitInstructions(conditionalBranch.ElseBlock.Instructions));
+                bytes.Add((byte)AddComplexity(WasmOpCodes.Else));
+                bytes.AddRange(EmitBlockNoWrap(conditionalBranch.ElseBlock));
             }
 
-            bytes.Add((byte)WasmOpCodes.End);
+            bytes.Add((byte)AddComplexity(WasmOpCodes.End));
 
             return bytes.ToArray();
         }
@@ -604,25 +624,25 @@ namespace CommonIR.Generators.Binary.WASM.Emission
             List<byte> bytes = [];
 
             bytes.AddRange([
-                (byte)WasmOpCodes.Block,
+                (byte)AddComplexity(WasmOpCodes.Block),
                 (byte)WasmTypeTranslator.TranslateIRType(loop.Block.ReturnType),
 
-                (byte)WasmOpCodes.Loop,
+                (byte)AddComplexity(WasmOpCodes.Loop),
                 (byte)WasmTypeTranslator.TranslateIRType(loop.Block.ReturnType),
 
                 .. EmitInstruction(loop.Condition),
 
-                (byte)WasmOpCodes.I32_eqz,
-                (byte)WasmOpCodes.Br_if,
+                (byte)AddComplexity(WasmOpCodes.I32_eqz),
+                (byte)AddComplexity(WasmOpCodes.Br_if),
                 .. LEB128.EncodeUnsigned(1),
 
-                .. EmitInstructions(loop.Block.Instructions),
+                .. EmitBlockNoWrap(loop.Block),
 
-                (byte)WasmOpCodes.Br,
+                (byte)AddComplexity(WasmOpCodes.Br),
                 .. LEB128.EncodeUnsigned(0),
 
-                (byte)WasmOpCodes.End,
-                (byte)WasmOpCodes.End
+                (byte)AddComplexity(WasmOpCodes.End),
+                (byte)AddComplexity(WasmOpCodes.End)
             ]);
 
             return bytes.ToArray();
@@ -680,7 +700,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
             return [
                 .. EmitInstruction(compare.Left),
                 .. EmitInstruction(compare.Right),
-                (byte)comparisonInstruction,
+                (byte)AddComplexity(comparisonInstruction),
             ];
         }
     }
