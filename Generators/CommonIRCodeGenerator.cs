@@ -1,6 +1,7 @@
 ﻿using CommonIR.Errors;
 using CommonIR.Generators.Binary.CIL;
 using CommonIR.Generators.Binary.WASM;
+using CommonIR.Generators.Binary.X8664;
 using CommonIR.Generators.Textual.HLSL;
 using CommonIR.IR.Grammar.Objects;
 using CommonIR.Passes.Optimization;
@@ -42,6 +43,12 @@ namespace CommonIR.Generators
                     {
                         HLSLGenerator hlslGenerator = new HLSLGenerator(module, Settings.TargetConfiguration as CommonIRHLSLConfiguration ?? throw ErrorHandler.Create("Could not create target configuration for HLSL."));
                         return hlslGenerator.GenerateSourceFiles();
+                    }
+
+                case CommonIRTargets.X8664:
+                    {
+                        X8664Generator x8664Generator = new X8664Generator(module, Settings.TargetConfiguration as CommonIRX8664Configuration ?? throw ErrorHandler.Create("Could not create target configuration for x86-64."));
+                        return x8664Generator.GenerateSourceFiles();
                     }
 
                 default:

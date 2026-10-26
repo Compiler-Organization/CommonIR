@@ -161,6 +161,38 @@ namespace CommonIR.IR.Grammar.Objects
             return _string;
         }
 
+        public IRConstantBytes CreateConstantBytes(byte[] value)
+        {
+            IRConstantBytes bytes = new IRConstantBytes(value, new IRType(IRDataTypes.Array, CreateArraySchema(new IRType(IRDataTypes.UInt8))))
+            {
+                Parent = this,
+            };
+
+            this.Objects.Add(bytes);
+
+            this.ConstantsSize += (ulong)value.LongLength;
+
+            return bytes;
+        }
+
+        public IRFunction CreateKernel(string name, IRType outputType, List<IRLocal> parameterTypes)
+        {
+            List<IRLocal> parameters = [
+                new IRLocal("index", IRDataTypes.Int32, isMutable: false),
+                new IRLocal("buffer", outputType, isMutable: true),
+                .. parameterTypes
+            ];
+
+            IRFunction kernel = new IRFunction(name, parameters, [new IRType(IRDataTypes.Void)], isExport: false)
+            {
+                Parent = this,
+                IsKernel = true
+            };
+
+            this.Functions.Add(kernel);
+            return kernel;
+        }
+
         /// <summary>
         /// Creates an array, adds it to the modules objects and returns it.
         /// </summary>

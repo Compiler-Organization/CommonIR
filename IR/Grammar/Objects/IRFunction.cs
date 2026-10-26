@@ -1,4 +1,5 @@
-﻿using CommonIR.IR.Grammar.Instructions;
+﻿using CommonIR.Errors;
+using CommonIR.IR.Grammar.Instructions;
 using System.Reflection;
 using System.Reflection.Emit;
 
@@ -12,6 +13,14 @@ namespace CommonIR.IR.Grammar.Objects
         public string Name { get; set; } = "";
 
         public bool IsExport { get; set; }
+
+        public bool IsKernel { get; set; }
+
+        public IRLocal KernelIndex => this.IsKernel ? this.Parameters[0] : throw ErrorHandler.Create($"Function '{this.Name}' is not a kernel.");
+
+        public IRLocal KernelOutput => this.IsKernel ? this.Parameters[1] : throw ErrorHandler.Create($"Function '{this.Name}' is not a kernel.");
+
+        public List<IRLocal> KernelParameters => this.IsKernel ? this.Parameters.Skip(2).ToList() : throw ErrorHandler.Create($"Function '{this.Name}' is not a kernel.");
 
         /// <summary>
         /// The parameters of the function, represented as their respective types.
@@ -152,7 +161,7 @@ namespace CommonIR.IR.Grammar.Objects
 
         public string Dump(int indentation)
         {
-            return $"{new string('\t', indentation)}{(this.IsExport ? "export " : "")}function [{this.Offset}] {this.Name}({string.Join(", ", Parameters.Select(p => p.Dump(0)))}) : ({string.Join(", ", ReturnTypes.Select(r => r.Dump(0)))}) \n{new string('\t', indentation)}{{\n{this.Entryblock.Dump(indentation + 1)}\n{new string('\t', indentation)}}}";
+            return $"{new string('\t', indentation)}{(this.IsExport ? "export " : "")}{(this.IsKernel ? "kernel " : "")}function [{this.Offset}] {this.Name}({string.Join(", ", Parameters.Select(p => p.Dump(0)))}) : ({string.Join(", ", ReturnTypes.Select(r => r.Dump(0)))}) \n{new string('\t', indentation)}{{\n{this.Entryblock.Dump(indentation + 1)}\n{new string('\t', indentation)}}}";
         }
     }
 }

@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
 	<PackageId>CommonIR</PackageId>
-	<Version>1.2.1</Version>
+	<Version>1.3.0</Version>
 	<Authors>Draugr-official</Authors>
 	<Company>Compiler Organization</Company>
 	<Description>Generic IR to support a variety of different targets, such as WASM, x8664, and other modern architectures.</Description>
@@ -14,7 +14,7 @@
 	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-	<PackageReleaseNotes>With the future being heterogenous in mind, work on the HLSL textual target has started. Added circuit complexity estimation to the WASM target.</PackageReleaseNotes>
+	<PackageReleaseNotes>BigBeautifulCommit - After a long time of radio silence ive finally decided (after long contemplation) to make this version of CommonIR public - Added x8664 target support, added HLSL target support. Revamped the IR for better compatibility with the new targets.</PackageReleaseNotes>
 	<PackageProjectUrl>https://github.com/Compiler-Organization/CommonIR</PackageProjectUrl>
 	<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>

@@ -17,17 +17,30 @@ namespace CommonIR.IR.Grammar.Instructions.ControlFlow
 
         public IRBlock Block { get; set; }
 
-        public IRLoop(IRValueInstruction condition, IRBlock block) 
+        public IRBlock? Increment { get; set; }
+
+        public IRLoop(IRValueInstruction condition, IRBlock block)
         {
             this.Condition = condition;
             this.Block = block;
 
+            condition.References.Add(this);
+            this.Operands.Add(condition);
+        }
+
+        public IRLoop(IRValueInstruction condition, IRBlock block, IRBlock increment)
+        {
+            this.Condition = condition;
+            this.Block = block;
+            this.Increment = increment;
+
+            condition.References.Add(this);
             this.Operands.Add(condition);
         }
 
         public string Dump(int indentation)
         {
-            return $"{new string('\t', indentation)}loop ({this.Condition.Dump(0)}) \n{new string('\t', indentation)}{{\n{this.Block.Dump(indentation + 1)}\n{new string('\t', indentation)}}}";
+            return $"{new string('\t', indentation)}loop ({this.Condition.Dump(0)}) \n{new string('\t', indentation)}{{\n{this.Block.Dump(indentation + 1)}{(this.Increment == null ? "" : $"\n{this.Increment.Dump(indentation + 1)}")}\n{new string('\t', indentation)}}}";
         }
     }
 }

@@ -32,7 +32,7 @@ namespace CommonIR.Generators.Textual.HLSL.Translation
             List<SourceFile> sourceFiles = new List<SourceFile>();
             HLSLStandaloneFunctionTranslator standaloneFunctionTranslator = new HLSLStandaloneFunctionTranslator(configuration);
 
-            foreach(IRFunction function in module.Functions)
+            foreach(IRFunction function in module.Functions.Where(f => f.IsKernel))
             {
                 string translatedFunction = standaloneFunctionTranslator.TranslateFunction(function);
                 sourceFiles.Add(new SourceFile(function.Name, ".hlsl", Encoding.UTF8.GetBytes(translatedFunction)));

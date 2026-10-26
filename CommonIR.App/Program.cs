@@ -29,12 +29,12 @@ namespace CommonIR.App
 
             IRModule module = new IRModule("test");
 
-            BuildHelloWorldApp(module);
+            BuildConditionalApp(module);
 
 
             List<SourceFile> sourceFiles = codeGen.GenerateSourceFiles(module);
 
-            if(true)
+            if(false)
             {
                 foreach (SourceFile sourceFile in sourceFiles)
                 {
@@ -50,24 +50,34 @@ namespace CommonIR.App
                     Console.WriteLine();
                     sourceFile.WriteToDisk();
                 }
+
+                Console.WriteLine(module.Dump(0));
             }
             else
             {
                 RunWithWasmtime(module, sourceFiles);
             }
-
-            Console.WriteLine(module.Dump(0));
         }
 
         static void RunWithWasmtime(IRModule irModule, List<SourceFile> sourceFiles)
         {
-            using Engine engine = new Engine();
+            Config config = new Config().WithWasmThreads(true).WithBulkMemory(true);
+
+            using Engine engine = new Engine(config);
             using Module module = Module.FromBytes(engine, irModule.Name, sourceFiles.First(f => f.Extension == ".wasm").Data);
             using Linker linker = new Linker(engine);
             using Store store = new Store(engine);
 
-            linker.Define("console", "log", Function.FromCallback<int, int>(store, (ptr, len) => Console.WriteLine($"console.log: Ptr:{ptr}, Len:{len}")));
-            linker.Define("console", "error", Function.FromCallback<int, int>(store, (ptr, len) => Console.WriteLine($"console.error: Ptr:{ptr}, Len:{len}")));
+            linker.DefineWasi();
+
+            Memory memory = new Memory(store, 256);
+
+            linker.Define("env", "memory", memory);
+
+            WasmBindings bindings = new WasmBindings(memory);
+
+            linker.Define("console", "log", Function.FromCallback<int, int>(store, bindings.ConsoleLog));
+            linker.Define("console", "error", Function.FromCallback<int, int>(store, bindings.ConsoleError));
 
             Instance instance = linker.Instantiate(store, module);
 
@@ -97,7 +107,7 @@ namespace CommonIR.App
 
         static (IRFunction, IRBuilder) SetUpInterface(IRModule module)
         {
-            IRFunction mainFunction = module.CreateFunction("Main", [], [], isExport: true);
+            IRFunction mainFunction = module.CreateFunction("main", [], [], isExport: true);
             IRBuilder builder = new IRBuilder(module, mainFunction, mainFunction.Entryblock);
             builder.PositionAtStart(mainFunction, mainFunction.Entryblock);
 

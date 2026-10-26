@@ -31,13 +31,16 @@ namespace CommonIR.IR.Grammar.Instructions.Numeric
 
         public IRType ValueType { get; set; }
 
+        public IRType OperandType { get; set; }
+
         public IRCompare(IRComparisonOperator comparisonOperator, IRValueInstruction left, IRValueInstruction right)
         {
             this.Operator = comparisonOperator;
             this.Left = left;
             this.Right = right;
 
-            this.ValueType = left.ValueType;
+            this.ValueType = new IRType(IRDataTypes.Bool);
+            this.OperandType = left.ValueType;
 
             left.References.Add(this);
             right.References.Add(this);
@@ -50,7 +53,7 @@ namespace CommonIR.IR.Grammar.Instructions.Numeric
             string op = this.Operator switch
             {
                 IRComparisonOperator.EqualTo => " == ",
-                IRComparisonOperator.NotEqualTo => " => ",
+                IRComparisonOperator.NotEqualTo => " != ",
 
                 IRComparisonOperator.LessThan => " < ",
                 IRComparisonOperator.LessThanOrEqual => " <= ",

@@ -92,6 +92,8 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 IRCompare compare => EmitCompare(compare),
                 IRConditionalBranch conditionalBranch => EmitConditionalBranch(conditionalBranch),
                 IRLoop loop => EmitLoop(loop),
+                IRBreak => EmitBreak(),
+                IRContinue => EmitContinue(),
 
                 IRConstantString str => EmitLoadString(str),
                 IRGlobal global => EmitLoadGlobal(global),
@@ -109,6 +111,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
             });
 
             if (instruction is IRValueInstruction valInstruction
+                && valInstruction is not (IRLocal or IRGlobal)
                 && !valInstruction.IsConstant
                 && valInstruction.References.Count > 1)
             {
@@ -548,15 +551,33 @@ namespace CommonIR.Generators.Binary.WASM.Emission
 
         public byte[] EmitConstant(IRConstantInteger constInt)
         {
-            return [constInt.IntegerType switch 
+            byte opcode = constInt.IntegerType switch
             {
+                IRDataTypes.Bool or IRDataTypes.Int8 or IRDataTypes.UInt8 or IRDataTypes.Int16 or IRDataTypes.UInt16 or IRDataTypes.UInt32 => (byte)AddComplexity(WasmOpCodes.I32_const),
                 IRDataTypes.Int32 => (byte)AddComplexity(WasmOpCodes.I32_const),
                 IRDataTypes.Int64 => (byte)AddComplexity(WasmOpCodes.I64_const),
                 IRDataTypes.Float32 => (byte)AddComplexity(WasmOpCodes.F32_const),
                 IRDataTypes.Float64 => (byte)AddComplexity(WasmOpCodes.F64_const),
-
                 _ => throw ErrorHandler.Create($"Cannot emit constant of type {constInt.IntegerType}")
-            }, .. LEB128.EncodeSigned(constInt.Value)];
+            };
+
+            byte[] immediateBytes = constInt.IntegerType switch
+            {
+                IRDataTypes.Bool or IRDataTypes.Int8 or IRDataTypes.UInt8 or IRDataTypes.Int16 or IRDataTypes.UInt16 => LEB128.EncodeSigned((int)constInt.Value),
+                IRDataTypes.UInt32 => LEB128.EncodeSigned(unchecked((int)(uint)constInt.Value)),
+                IRDataTypes.Int32 => LEB128.EncodeSigned((int)constInt.Value),
+                IRDataTypes.Int64 => LEB128.EncodeSigned((long)constInt.Value),
+
+                IRDataTypes.Float32 => BitConverter.GetBytes((float)constInt.Value),
+                IRDataTypes.Float64 => BitConverter.GetBytes(constInt.Value),
+
+                _ => throw ErrorHandler.Create($"Cannot encode type {constInt.IntegerType}")
+            };
+
+            byte[] result = new byte[1 + immediateBytes.Length];
+            result[0] = opcode;
+            Buffer.BlockCopy(immediateBytes, 0, result, 1, immediateBytes.Length);
+            return result;
         }
 
         public byte[] EmitCall(IRCall call)
@@ -575,15 +596,50 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 (byte)WasmTypeTranslator.TranslateIRType(block.ReturnType)
             ];
 
+            LabelStack.Add(WasmLabelKinds.Block);
             BlockContextStack.Push(block);
             bytes.AddRange(EmitInstructions(block.Instructions));
             ulong complexity = BlockContextStack.Peek().SpeculativeCircuitComplexity;
             BlockContextStack.Pop();
             BlockContextStack.Peek().SpeculativeCircuitComplexity += complexity;
+            LabelStack.RemoveAt(LabelStack.Count - 1);
 
             bytes.Add((byte)AddComplexity(WasmOpCodes.End));
 
             return bytes.ToArray();
+        }
+
+        List<WasmLabelKinds> LabelStack { get; set; } = new List<WasmLabelKinds>();
+
+        enum WasmLabelKinds
+        {
+            Block,
+            If,
+            LoopExit,
+            LoopTop,
+            LoopContinue,
+        }
+
+        ulong LabelDepth(WasmLabelKinds kind, string instructionName)
+        {
+            int index = LabelStack.LastIndexOf(kind);
+
+            if (index == -1)
+            {
+                throw ErrorHandler.Create($"'{instructionName}' can only be used inside a loop.");
+            }
+
+            return (ulong)(LabelStack.Count - 1 - index);
+        }
+
+        public byte[] EmitBreak()
+        {
+            return [(byte)AddComplexity(WasmOpCodes.Br), .. LEB128.EncodeUnsigned(LabelDepth(WasmLabelKinds.LoopExit, "break"))];
+        }
+
+        public byte[] EmitContinue()
+        {
+            return [(byte)AddComplexity(WasmOpCodes.Br), .. LEB128.EncodeUnsigned(LabelDepth(WasmLabelKinds.LoopContinue, "continue"))];
         }
 
         public byte[] EmitBlockNoWrap(IRBlock block)
@@ -601,8 +657,11 @@ namespace CommonIR.Generators.Binary.WASM.Emission
         {
             List<byte> bytes = [];
 
+            bytes.AddRange(EmitInstruction(conditionalBranch.Condition));
+
+            LabelStack.Add(WasmLabelKinds.If);
+
             bytes.AddRange([
-                .. EmitInstruction(conditionalBranch.Condition),
                 (byte)AddComplexity(WasmOpCodes.If),
                 (byte)WasmTypeTranslator.TranslateIRType(conditionalBranch.ThenBlock.ReturnType),
                 .. EmitBlockNoWrap(conditionalBranch.ThenBlock),
@@ -614,6 +673,8 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 bytes.AddRange(EmitBlockNoWrap(conditionalBranch.ElseBlock));
             }
 
+            LabelStack.RemoveAt(LabelStack.Count - 1);
+
             bytes.Add((byte)AddComplexity(WasmOpCodes.End));
 
             return bytes.ToArray();
@@ -622,13 +683,16 @@ namespace CommonIR.Generators.Binary.WASM.Emission
         public byte[] EmitLoop(IRLoop loop)
         {
             List<byte> bytes = [];
+            byte blockType = (byte)WasmTypeTranslator.TranslateIRType(loop.Block.ReturnType);
+
+            LabelStack.AddRange([WasmLabelKinds.LoopExit, WasmLabelKinds.LoopTop]);
 
             bytes.AddRange([
                 (byte)AddComplexity(WasmOpCodes.Block),
-                (byte)WasmTypeTranslator.TranslateIRType(loop.Block.ReturnType),
+                blockType,
 
                 (byte)AddComplexity(WasmOpCodes.Loop),
-                (byte)WasmTypeTranslator.TranslateIRType(loop.Block.ReturnType),
+                blockType,
 
                 .. EmitInstruction(loop.Condition),
 
@@ -636,8 +700,22 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 (byte)AddComplexity(WasmOpCodes.Br_if),
                 .. LEB128.EncodeUnsigned(1),
 
-                .. EmitBlockNoWrap(loop.Block),
+                (byte)AddComplexity(WasmOpCodes.Block),
+                blockType,
+            ]);
 
+            LabelStack.Add(WasmLabelKinds.LoopContinue);
+            bytes.AddRange(EmitBlockNoWrap(loop.Block));
+            LabelStack.RemoveAt(LabelStack.Count - 1);
+
+            bytes.Add((byte)AddComplexity(WasmOpCodes.End));
+
+            if (loop.Increment != null)
+            {
+                bytes.AddRange(EmitBlockNoWrap(loop.Increment));
+            }
+
+            bytes.AddRange([
                 (byte)AddComplexity(WasmOpCodes.Br),
                 .. LEB128.EncodeUnsigned(0),
 
@@ -645,12 +723,17 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 (byte)AddComplexity(WasmOpCodes.End)
             ]);
 
+            LabelStack.RemoveRange(LabelStack.Count - 2, 2);
+
             return bytes.ToArray();
         }
 
         public byte[] EmitCompare(IRCompare compare)
         {
-            WasmOpCodes comparisonInstruction = (compare.ValueType.DataType, compare.Operator) switch
+            IRDataTypes operandType = compare.OperandType.DataType is IRDataTypes.Bool or IRDataTypes.Int8 or IRDataTypes.Int16 ? IRDataTypes.Int32 : compare.OperandType.DataType;
+            operandType = operandType is IRDataTypes.UInt8 or IRDataTypes.UInt16 ? IRDataTypes.UInt32 : operandType;
+
+            WasmOpCodes comparisonInstruction = (operandType, compare.Operator) switch
             {
                 (IRDataTypes.Int32, IRComparisonOperator.EqualTo) => WasmOpCodes.I32_eq,
                 (IRDataTypes.Int32, IRComparisonOperator.NotEqualTo) => WasmOpCodes.I32_ne,
@@ -694,7 +777,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
                 (IRDataTypes.Float64, IRComparisonOperator.LessThanOrEqual) => WasmOpCodes.F64_le,
                 (IRDataTypes.Float64, IRComparisonOperator.GreaterThanOrEqual) => WasmOpCodes.F64_ge,
 
-                _ => throw ErrorHandler.CreateNotImplimented($"Instruction '{compare.Operator}' for type '{compare.ValueType.DataType}' is not yet implemented.")
+                _ => throw ErrorHandler.CreateNotImplimented($"Instruction '{compare.Operator}' for type '{compare.OperandType.DataType}' is not yet implemented.")
             };
 
             return [

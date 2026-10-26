@@ -1,5 +1,7 @@
 ﻿using CommonIR.Errors;
 using CommonIR.Generators.Binary.CIL;
+using CommonIR.Generators.Binary.X8664;
+using CommonIR.Generators.Textual.HLSL;
 using CommonIR.Passes.Optimization;
 using System;
 using System.Collections.Generic;
@@ -39,6 +41,18 @@ namespace CommonIR.Generators
                     case CommonIRTargets.WebAssembly:
                         {
                             _TargetConfiguration = new CommonIRTargetConfiguration();
+                            break;
+                        }
+
+                    case CommonIRTargets.HLSL:
+                        {
+                            _TargetConfiguration = new CommonIRHLSLConfiguration();
+                            break;
+                        }
+
+                    case CommonIRTargets.X8664:
+                        {
+                            _TargetConfiguration = new CommonIRX8664Configuration();
                             break;
                         }
 

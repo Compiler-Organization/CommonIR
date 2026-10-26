@@ -12,10 +12,10 @@ namespace CommonIR.IR.Grammar.Objects
 
         public IRGrammar? Parent { get; set; }
         public IRDataTypes IntegerType { get; set; }
-        public long Value { get; set; }
+        public double Value { get; set; }
         public IRType ValueType { get; set; }
 
-        public IRConstantInteger(IRDataTypes integerType, long value)
+        public IRConstantInteger(IRDataTypes integerType, double value)
         {
             this.IntegerType = integerType;
             this.Value = value;

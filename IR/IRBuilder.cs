@@ -65,34 +65,38 @@ namespace CommonIR.IR
             return instruction;
         }
 
-        IRFunction? CheckpointFunction { get; set; }
-        IRBlock? CheckpointBlock { get; set; }
-
-        int CheckpointPosition { get; set; } = -1;
+        Stack<IRFunction> CheckpointFunction { get; set; } = new Stack<IRFunction>();
+        Stack<IRBlock> CheckpointBlock { get; set; } = new Stack<IRBlock>();
+        Stack<int> CheckpointPosition { get; set; } = new Stack<int>();
 
         /// <summary>
-        /// Sets a checkpoint at the current function, in the current block at the current position
+        /// Pushes the current function, block and position to the top of the history stack.
         /// </summary>
         public void SetCheckpoint()
         {
-            this.CheckpointFunction = this.Function;
-            this.CheckpointBlock = this.Block;
-            this.CheckpointPosition = this.Position;
+            if(this.Function == null || this.Block == null)
+            {
+                throw ErrorHandler.Create($"Cannot set checkpoint and function or block is null.");
+            }
+
+            this.CheckpointFunction.Push(this.Function);
+            this.CheckpointBlock.Push(this.Block);
+            this.CheckpointPosition.Push(this.Position);
         }
 
         /// <summary>
-        /// Restores the builder to the checkpoint at the function, in the block at its position.
+        /// Pops the stored function, block and position from the top of the history stack and assigns them.
         /// </summary>
         public void RestoreCheckpoint()
         {
-            if (this.CheckpointFunction == null || this.CheckpointBlock == null || this.Position == -1)
+            if (this.CheckpointFunction.Count == 0 || this.CheckpointBlock.Count == 0 || this.CheckpointPosition.Count == 0)
             {
                 throw ErrorHandler.Create($"Cannot restore checkpoint as no checkpoint has been set yet.");
             }
 
-            this.Function = this.CheckpointFunction;
-            this.Block = this.CheckpointBlock;
-            this.Position = this.CheckpointPosition;
+            this.Function = this.CheckpointFunction.Pop();
+            this.Block = this.CheckpointBlock.Pop();
+            this.Position = this.CheckpointPosition.Pop();
         }
 
         /// <summary>
@@ -254,7 +258,7 @@ namespace CommonIR.IR
         /// <param name="integerType"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public IRValueInstruction BuildConstantInteger(IRDataTypes integerType, long value)
+        public IRValueInstruction BuildConstantInteger(IRDataTypes integerType, double value)
         {
             IRValueInstruction instruction = new IRConstantInteger(integerType: integerType, value: value);
             return instruction;
@@ -401,6 +405,95 @@ namespace CommonIR.IR
         {
             IRValueInstruction compare = new IRCompare(comparisonOperator, left, right);
             return compare;
+        }
+
+        public IRValueInstruction BuildConvert(IRValueInstruction value, IRType targetType)
+        {
+            IRValueInstruction convert = new IRConvert(value, targetType);
+            return convert;
+        }
+
+        public IRValueInstruction BuildBitwise(IRBitwiseOperator bitwiseOperator, IRValueInstruction left, IRValueInstruction right)
+        {
+            IRValueInstruction bitwise = new IRBitwise(bitwiseOperator, left, right);
+            return bitwise;
+        }
+
+        public IRValueInstruction BuildLoadElement(IRValueInstruction target, IRValueInstruction index, IRType elementType)
+        {
+            IRValueInstruction loadElement = new IRLoadElement(target, index, elementType);
+            return loadElement;
+        }
+
+        public IRVoidInstruction BuildStoreElement(IRValueInstruction target, IRValueInstruction index, IRValueInstruction value, IRType elementType)
+        {
+            IRVoidInstruction storeElement = new IRStoreElement(target, index, value, elementType);
+            InsertVoidInstruction(storeElement);
+            return storeElement;
+        }
+
+        public IRValueInstruction BuildLength(IRValueInstruction target)
+        {
+            IRValueInstruction length = new IRLength(target);
+            return length;
+        }
+
+        public IRValueInstruction BuildFatPointer(IRValueInstruction pointer, IRValueInstruction length, IRType type)
+        {
+            IRValueInstruction fatPointer = new IRFatPointer(pointer, length, type);
+            return fatPointer;
+        }
+
+        public IRVoidInstruction BuildBreak()
+        {
+            IRVoidInstruction breakInstruction = new IRBreak();
+            InsertVoidInstruction(breakInstruction);
+            return breakInstruction;
+        }
+
+        public IRVoidInstruction BuildContinue()
+        {
+            IRVoidInstruction continueInstruction = new IRContinue();
+            InsertVoidInstruction(continueInstruction);
+            return continueInstruction;
+        }
+
+        public IRVoidInstruction BuildLoop(IRValueInstruction condition, IRBlock block, IRBlock increment)
+        {
+            IRVoidInstruction loop = new IRLoop(condition, block, increment);
+            InsertVoidInstruction(loop);
+            return loop;
+        }
+
+        public IRValueInstruction BuildFunctionReference(IRFunction function)
+        {
+            IRValueInstruction reference = new IRFunctionReference(function);
+            return reference;
+        }
+
+        public IRInstruction BuildCallIndirect(IRValueInstruction functionPointer, IRType returnType, List<IRValueInstruction> arguments)
+        {
+            return InsertInstruction(new IRCallIndirect(functionPointer, returnType, arguments));
+        }
+
+        public IRValueInstruction BuildDispatch(IRFunction kernel, IRValueInstruction count, List<IRValueInstruction> arguments)
+        {
+            IRDispatch dispatch = new IRDispatch(kernel, count, arguments);
+            InsertInstruction(dispatch);
+            return dispatch;
+        }
+
+        public IRValueInstruction BuildAwait(IRValueInstruction handle, IRType resultType)
+        {
+            IRAwait await = new IRAwait(handle, resultType);
+            InsertInstruction(await);
+            return await;
+        }
+
+        public IRValueInstruction BuildConstantBytes(byte[] value)
+        {
+            IRValueInstruction bytes = this.Module.CreateConstantBytes(value);
+            return bytes;
         }
 
         /// <summary>
@@ -550,7 +643,7 @@ namespace CommonIR.IR
         {
             if (index.IsConstant && index is IRConstantInteger integer)
             {
-                return BuildStore(pointer, BuildConstantInteger(IRDataTypes.Int32, integer.Value * elementType.Width), value);
+                return BuildStore(pointer, BuildConstantInteger(IRDataTypes.Int32, integer.Value * (double)elementType.Width), value);
             }
 
             return BuildStore(pointer, BuildMultiply(index, BuildConstantInteger(IRDataTypes.Int32, elementType.Width)), value);

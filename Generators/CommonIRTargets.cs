@@ -9,5 +9,6 @@ namespace CommonIR.Generators
         WebAssembly,
         CommonIntermediateLanguage,
         HLSL,
+        X8664,
     }
 }
