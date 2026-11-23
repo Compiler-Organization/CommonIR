@@ -43,12 +43,36 @@ namespace CommonIR.Generators.Textual.HLSL.Translation
             builder.AppendLine("};");
             builder.AppendLine();
 
-            builder.AppendLine($"RWStructuredBuffer<{HLSLInstructionEmitter.TypeName(layout.OutputElementType)}> {emitter.NameOf(kernel.KernelOutput)} : register(u0);");
+            builder.AppendLine($"RWStructuredBuffer<uint> {HLSLInstructionEmitter.FaultBuffer} : register(u0);");
+
+            if (layout.HasOutput)
+            {
+                builder.AppendLine($"RWStructuredBuffer<{HLSLInstructionEmitter.TypeName(layout.OutputElementType!)}> {emitter.NameOf(kernel.KernelOutput)} : register(u{layout.OutputRegister});");
+            }
 
             for (int i = 0; i < layout.Inputs.Count; i++)
             {
                 IRType elementType = HLSLKernelLayout.ElementTypeOf(layout.Inputs[i].ValueType, kernel.Name);
-                builder.AppendLine($"StructuredBuffer<{HLSLInstructionEmitter.TypeName(elementType)}> {emitter.NameOf(layout.Inputs[i])} : register(t{i});");
+                builder.AppendLine($"RWStructuredBuffer<{HLSLInstructionEmitter.TypeName(elementType)}> {emitter.NameOf(layout.Inputs[i])} : register(u{layout.InputRegister(i)});");
+            }
+
+            builder.AppendLine();
+            builder.AppendLine($"void {HLSLInstructionEmitter.FaultFunction}()");
+            builder.AppendLine("{");
+            builder.AppendLine($"    {HLSLInstructionEmitter.FaultBuffer}[0] = 1u;");
+            builder.AppendLine("}");
+
+            if (layout.HasOutput)
+            {
+                string output = emitter.NameOf(kernel.KernelOutput);
+                string outputType = HLSLInstructionEmitter.TypeName(layout.OutputElementType!);
+                AppendAccessors(builder, HLSLInstructionEmitter.LoadOutputFunction, HLSLInstructionEmitter.StoreOutputFunction, output, outputType, "__count");
+            }
+
+            for (int i = 0; i < layout.Inputs.Count; i++)
+            {
+                string elementType = HLSLInstructionEmitter.TypeName(HLSLKernelLayout.ElementTypeOf(layout.Inputs[i].ValueType, kernel.Name));
+                AppendAccessors(builder, HLSLInstructionEmitter.LoadInputFunction(i), HLSLInstructionEmitter.StoreInputFunction(i), emitter.NameOf(layout.Inputs[i]), elementType, $"__length{i}");
             }
 
             builder.AppendLine();
@@ -82,6 +106,30 @@ namespace CommonIR.Generators.Textual.HLSL.Translation
             builder.AppendLine("}");
 
             return builder.ToString();
+        }
+
+        static void AppendAccessors(StringBuilder builder, string load, string store, string buffer, string type, string length)
+        {
+            builder.AppendLine();
+            builder.AppendLine($"{type} {load}(uint i)");
+            builder.AppendLine("{");
+            builder.AppendLine($"    if (i >= {length})");
+            builder.AppendLine("    {");
+            builder.AppendLine($"        {HLSLInstructionEmitter.FaultFunction}();");
+            builder.AppendLine($"        return ({type})0;");
+            builder.AppendLine("    }");
+            builder.AppendLine($"    return {buffer}[i];");
+            builder.AppendLine("}");
+            builder.AppendLine();
+            builder.AppendLine($"void {store}(uint i, {type} value)");
+            builder.AppendLine("{");
+            builder.AppendLine($"    if (i >= {length})");
+            builder.AppendLine("    {");
+            builder.AppendLine($"        {HLSLInstructionEmitter.FaultFunction}();");
+            builder.AppendLine("        return;");
+            builder.AppendLine("    }");
+            builder.AppendLine($"    {buffer}[i] = value;");
+            builder.AppendLine("}");
         }
     }
 }

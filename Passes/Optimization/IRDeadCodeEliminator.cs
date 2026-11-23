@@ -1,9 +1,6 @@
 ﻿using CommonIR.IR.Grammar.Instructions;
+using CommonIR.IR.Grammar.Instructions.ControlFlow;
 using CommonIR.IR.Grammar.Objects;
-using System;
-using System.Collections.Generic;
-using System.Reflection.Emit;
-using System.Text;
 
 namespace CommonIR.Passes.Optimization
 {
@@ -16,65 +13,97 @@ namespace CommonIR.Passes.Optimization
             this.Module = module;
         }
 
-        public void Pass()
+        public bool Pass()
         {
-            RemoveUnusedFunctions();
-            RemoveUnusedLocals();
-            RemoveUnusedGlobals();
-        }
+            HashSet<IRFunction> reachable = new HashSet<IRFunction>(ReferenceEqualityComparer.Instance);
+            Stack<IRFunction> pending = new Stack<IRFunction>();
 
-        /// <summary>
-        /// Removes unused functions from the module and refragments its function repository
-        /// </summary>
-        void RemoveUnusedFunctions()
-        {
-            foreach (IRFunction function in this.Module.Functions.Where(f => !f.IsExport && f.References.Count == 0))
+            void Reach(IRFunction function)
             {
-                foreach (IRBlock block in function.Blocks)
+                if (function is not IRFunctionImport && reachable.Add(function))
                 {
-                    foreach (IRInstruction instruction in block.Instructions)
-                    {
-                        RecursiveRemoveReferences(instruction);
-                    }
+                    pending.Push(function);
                 }
             }
 
-            Module.Functions.RemoveAll(f => !f.IsExport && f.References.Count == 0);
-        }
-
-        /// <summary> 
-        /// Recursively removes references through all operands of an instruction.
-        /// </summary>
-        /// <param name="instruction"></param>
-        void RecursiveRemoveReferences(IRInstruction instruction)
-        {
-            foreach (IRValueInstruction operand in instruction.Operands)
+            foreach (IRFunction function in this.Module.Functions.Where(f => f.IsExport || f.IsKernel || ReferenceEquals(f, this.Module.EntryPoint)))
             {
-                operand.References.Remove(instruction);
-
-                RecursiveRemoveReferences(operand);
+                Reach(function);
             }
 
-            instruction.Operands.Clear();
-        }
-
-        /// <summary>
-        /// Removes unused locals from functions and refragments its local repository
-        /// </summary>
-        void RemoveUnusedLocals()
-        {
-            foreach (var function in Module.Functions)
+            foreach (IRGlobal global in this.Module.Globals)
             {
-                function.Locals.RemoveAll(l => l.References.Count == 0);
+                foreach (IRFunction referenced in ReferencedFunctions(global.InitialValue))
+                {
+                    Reach(referenced);
+                }
             }
+
+            while (pending.Count > 0)
+            {
+                IRFunction function = pending.Pop();
+
+                if (!new IRFunctionAnalysis(function).IsSupported)
+                {
+                    return false;
+                }
+
+                foreach (IRFunction referenced in ReferencedFunctions(function.Entryblock))
+                {
+                    Reach(referenced);
+                }
+            }
+
+            List<IRFunction> unreachable = this.Module.Functions.Where(f => !reachable.Contains(f)).ToList();
+
+            foreach (IRFunction function in unreachable)
+            {
+                IRFunctionAnalysis analysis = new IRFunctionAnalysis(function);
+
+                foreach (IRInstruction statement in function.Entryblock.Instructions)
+                {
+                    IRTree.ReleaseStatement(statement, analysis);
+                }
+
+                this.Module.Functions.Remove(function);
+            }
+
+            return unreachable.Count > 0;
         }
 
-        /// <summary>
-        /// Removes unused globals from the module and refragments its global repository
-        /// </summary>
-        void RemoveUnusedGlobals()
+        static IEnumerable<IRFunction> ReferencedFunctions(IRBlock block)
+            => block.Instructions.SelectMany(ReferencedFunctions);
+
+        static IEnumerable<IRFunction> ReferencedFunctions(IRInstruction instruction)
         {
-            this.Module.Globals.RemoveAll(g => g.References.Count == 0);
+            IRFunction? direct = instruction switch
+            {
+                IRCall call => call.Function,
+                IRFunctionReference reference => reference.Function,
+                IRDispatch dispatch => dispatch.Kernel,
+                _ => null,
+            };
+
+            if (direct != null)
+            {
+                yield return direct;
+            }
+
+            foreach (IRValueInstruction child in IRTree.Children(instruction))
+            {
+                foreach (IRFunction function in ReferencedFunctions(child))
+                {
+                    yield return function;
+                }
+            }
+
+            foreach (IRBlock block in IRTree.NestedBlocks(instruction))
+            {
+                foreach (IRFunction function in ReferencedFunctions(block))
+                {
+                    yield return function;
+                }
+            }
         }
     }
 }

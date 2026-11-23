@@ -49,6 +49,8 @@ namespace CommonIR.Generators.Binary.X8664.Emission
             _ => throw ErrorHandler.CreateNotImplimented($"Values of type '{dataType}' have no size when targeting x86-64.")
         };
 
+        public static int ElementSize(IRType type) => IRStructSchema.IsInline(type) ? SizeOf((IRStructSchema)type.UserObject!) : SizeOf(type);
+
         public static int AlignmentOf(IRType type) => Math.Min(SizeOf(type), 8);
 
         public static bool IsSigned(IRType type) => IsSigned(type.DataType);

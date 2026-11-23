@@ -30,6 +30,14 @@ namespace CommonIR.IR.Grammar.Objects
         /// </summary>
         public int Width { get; set; }
 
+        /// <summary>
+        /// Arrays of this struct hold the structs themselves instead of pointers to them. Reading an element gives its
+        /// address, and storing one copies the struct's bytes. Only structs that own no other memory can be inline.
+        /// </summary>
+        public bool InlineInArrays { get; set; }
+
+        public static bool IsInline(IRType type) => type.DataType == IRDataTypes.Struct && type.UserObject is IRStructSchema { InlineInArrays: true };
+
         internal Type? CILType { get; set; }
 
          internal IRStructSchema(string name, List<IRStructProperty> properties)

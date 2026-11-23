@@ -687,5 +687,250 @@
         /// <para>Pops two floats, checks if the first is greater than or equal to the second, and pushes the integer result.</para>
         /// </summary>
         F64_ge = 0x66,
+
+        /// <summary>
+        /// <para>Call_indirect</para>
+        /// <para>Stack transition: [i32...] -> [...]</para>
+        /// <para>Pops a table index and calls the function stored there, checking that it has the expected type.</para>
+        /// </summary>
+        Call_indirect = 0x11,
+
+        /// <summary>
+        /// <para>Drop</para>
+        /// <para>Stack transition: [t] -> []</para>
+        /// <para>Pops a value and discards it.</para>
+        /// </summary>
+        Drop = 0x1A,
+
+        /// <summary>
+        /// <para>Select</para>
+        /// <para>Stack transition: [t, t, i32] -> [t]</para>
+        /// <para>Pops a condition and two values, and pushes the first value if the condition is non-zero, otherwise the second.</para>
+        /// </summary>
+        Select = 0x1B,
+
+        /// <summary>
+        /// <para>I32_and</para>
+        /// <para>Stack transition: [i32, i32] -> [i32]</para>
+        /// <para>Pops two integers and pushes their bitwise and.</para>
+        /// </summary>
+        I32_and = 0x71,
+
+        /// <summary>
+        /// <para>I32_or</para>
+        /// <para>Stack transition: [i32, i32] -> [i32]</para>
+        /// <para>Pops two integers and pushes their bitwise or.</para>
+        /// </summary>
+        I32_or = 0x72,
+
+        /// <summary>
+        /// <para>I32_xor</para>
+        /// <para>Stack transition: [i32, i32] -> [i32]</para>
+        /// <para>Pops two integers and pushes their bitwise exclusive or.</para>
+        /// </summary>
+        I32_xor = 0x73,
+
+        /// <summary>
+        /// <para>I32_shl</para>
+        /// <para>Stack transition: [i32, i32] -> [i32]</para>
+        /// <para>Pops a value and a shift count, and pushes the value shifted left.</para>
+        /// </summary>
+        I32_shl = 0x74,
+
+        /// <summary>
+        /// <para>I32_shr_s</para>
+        /// <para>Stack transition: [i32, i32] -> [i32]</para>
+        /// <para>Pops a value and a shift count, and pushes the value shifted right, keeping the sign.</para>
+        /// </summary>
+        I32_shr_s = 0x75,
+
+        /// <summary>
+        /// <para>I32_shr_u</para>
+        /// <para>Stack transition: [i32, i32] -> [i32]</para>
+        /// <para>Pops a value and a shift count, and pushes the value shifted right, filling with zeros.</para>
+        /// </summary>
+        I32_shr_u = 0x76,
+
+        /// <summary>
+        /// <para>I64_and</para>
+        /// <para>Stack transition: [i64, i64] -> [i64]</para>
+        /// <para>Pops two integers and pushes their bitwise and.</para>
+        /// </summary>
+        I64_and = 0x83,
+
+        /// <summary>
+        /// <para>I64_or</para>
+        /// <para>Stack transition: [i64, i64] -> [i64]</para>
+        /// <para>Pops two integers and pushes their bitwise or.</para>
+        /// </summary>
+        I64_or = 0x84,
+
+        /// <summary>
+        /// <para>I64_xor</para>
+        /// <para>Stack transition: [i64, i64] -> [i64]</para>
+        /// <para>Pops two integers and pushes their bitwise exclusive or.</para>
+        /// </summary>
+        I64_xor = 0x85,
+
+        /// <summary>
+        /// <para>I64_shl</para>
+        /// <para>Stack transition: [i64, i64] -> [i64]</para>
+        /// <para>Pops a value and a shift count, and pushes the value shifted left.</para>
+        /// </summary>
+        I64_shl = 0x86,
+
+        /// <summary>
+        /// <para>I64_shr_s</para>
+        /// <para>Stack transition: [i64, i64] -> [i64]</para>
+        /// <para>Pops a value and a shift count, and pushes the value shifted right, keeping the sign.</para>
+        /// </summary>
+        I64_shr_s = 0x87,
+
+        /// <summary>
+        /// <para>I64_shr_u</para>
+        /// <para>Stack transition: [i64, i64] -> [i64]</para>
+        /// <para>Pops a value and a shift count, and pushes the value shifted right, filling with zeros.</para>
+        /// </summary>
+        I64_shr_u = 0x88,
+
+        /// <summary>
+        /// <para>I32_wrap_i64</para>
+        /// <para>Stack transition: [i64] -> [i32]</para>
+        /// <para>Pops a 64-bit integer and pushes its low 32 bits.</para>
+        /// </summary>
+        I32_wrap_i64 = 0xA7,
+
+        /// <summary>
+        /// <para>I64_extend_i32_s</para>
+        /// <para>Stack transition: [i32] -> [i64]</para>
+        /// <para>Pops a 32-bit integer and pushes it sign-extended to 64 bits.</para>
+        /// </summary>
+        I64_extend_i32_s = 0xAC,
+
+        /// <summary>
+        /// <para>I64_extend_i32_u</para>
+        /// <para>Stack transition: [i32] -> [i64]</para>
+        /// <para>Pops a 32-bit integer and pushes it zero-extended to 64 bits.</para>
+        /// </summary>
+        I64_extend_i32_u = 0xAD,
+
+        /// <summary>
+        /// <para>F32_convert_i32_s</para>
+        /// <para>Stack transition: [i32] -> [f32]</para>
+        /// <para>Pops a signed 32-bit integer and pushes it as a float.</para>
+        /// </summary>
+        F32_convert_i32_s = 0xB2,
+
+        /// <summary>
+        /// <para>F32_convert_i32_u</para>
+        /// <para>Stack transition: [i32] -> [f32]</para>
+        /// <para>Pops an unsigned 32-bit integer and pushes it as a float.</para>
+        /// </summary>
+        F32_convert_i32_u = 0xB3,
+
+        /// <summary>
+        /// <para>F32_convert_i64_s</para>
+        /// <para>Stack transition: [i64] -> [f32]</para>
+        /// <para>Pops a signed 64-bit integer and pushes it as a float.</para>
+        /// </summary>
+        F32_convert_i64_s = 0xB4,
+
+        /// <summary>
+        /// <para>F32_convert_i64_u</para>
+        /// <para>Stack transition: [i64] -> [f32]</para>
+        /// <para>Pops an unsigned 64-bit integer and pushes it as a float.</para>
+        /// </summary>
+        F32_convert_i64_u = 0xB5,
+
+        /// <summary>
+        /// <para>F32_demote_f64</para>
+        /// <para>Stack transition: [f64] -> [f32]</para>
+        /// <para>Pops a 64-bit float and pushes it rounded to a 32-bit float.</para>
+        /// </summary>
+        F32_demote_f64 = 0xB6,
+
+        /// <summary>
+        /// <para>F64_convert_i32_s</para>
+        /// <para>Stack transition: [i32] -> [f64]</para>
+        /// <para>Pops a signed 32-bit integer and pushes it as a double.</para>
+        /// </summary>
+        F64_convert_i32_s = 0xB7,
+
+        /// <summary>
+        /// <para>F64_convert_i32_u</para>
+        /// <para>Stack transition: [i32] -> [f64]</para>
+        /// <para>Pops an unsigned 32-bit integer and pushes it as a double.</para>
+        /// </summary>
+        F64_convert_i32_u = 0xB8,
+
+        /// <summary>
+        /// <para>F64_convert_i64_s</para>
+        /// <para>Stack transition: [i64] -> [f64]</para>
+        /// <para>Pops a signed 64-bit integer and pushes it as a double.</para>
+        /// </summary>
+        F64_convert_i64_s = 0xB9,
+
+        /// <summary>
+        /// <para>F64_convert_i64_u</para>
+        /// <para>Stack transition: [i64] -> [f64]</para>
+        /// <para>Pops an unsigned 64-bit integer and pushes it as a double.</para>
+        /// </summary>
+        F64_convert_i64_u = 0xBA,
+
+        /// <summary>
+        /// <para>F64_promote_f32</para>
+        /// <para>Stack transition: [f32] -> [f64]</para>
+        /// <para>Pops a 32-bit float and pushes it as a 64-bit float.</para>
+        /// </summary>
+        F64_promote_f32 = 0xBB,
+
+        /// <summary>
+        /// <para>I32_reinterpret_f32</para>
+        /// <para>Stack transition: [f32] -> [i32]</para>
+        /// <para>Pops a 32-bit float and pushes its bits as an integer.</para>
+        /// </summary>
+        I32_reinterpret_f32 = 0xBC,
+
+        /// <summary>
+        /// <para>I64_reinterpret_f64</para>
+        /// <para>Stack transition: [f64] -> [i64]</para>
+        /// <para>Pops a 64-bit float and pushes its bits as an integer.</para>
+        /// </summary>
+        I64_reinterpret_f64 = 0xBD,
+
+        /// <summary>
+        /// <para>F32_reinterpret_i32</para>
+        /// <para>Stack transition: [i32] -> [f32]</para>
+        /// <para>Pops a 32-bit integer and pushes its bits as a float.</para>
+        /// </summary>
+        F32_reinterpret_i32 = 0xBE,
+
+        /// <summary>
+        /// <para>F64_reinterpret_i64</para>
+        /// <para>Stack transition: [i64] -> [f64]</para>
+        /// <para>Pops a 64-bit integer and pushes its bits as a double.</para>
+        /// </summary>
+        F64_reinterpret_i64 = 0xBF,
+
+        /// <summary>
+        /// <para>I32_extend8_s</para>
+        /// <para>Stack transition: [i32] -> [i32]</para>
+        /// <para>Pops an integer and pushes its low 8 bits sign-extended.</para>
+        /// </summary>
+        I32_extend8_s = 0xC0,
+
+        /// <summary>
+        /// <para>I32_extend16_s</para>
+        /// <para>Stack transition: [i32] -> [i32]</para>
+        /// <para>Pops an integer and pushes its low 16 bits sign-extended.</para>
+        /// </summary>
+        I32_extend16_s = 0xC1,
+
+        /// <summary>
+        /// <para>Prefix_FC</para>
+        /// <para>Stack transition: -</para>
+        /// <para>Prefix for the miscellaneous instructions (saturating truncation, bulk memory). Followed by a LEB128 sub-opcode.</para>
+        /// </summary>
+        Prefix_FC = 0xFC,
     }
 }

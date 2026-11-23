@@ -1,5 +1,9 @@
 using CommonIR.Errors;
 using CommonIR.IR.Grammar;
+using CommonIR.IR.Grammar.Instructions;
+using CommonIR.IR.Grammar.Instructions.Arithmetic;
+using CommonIR.IR.Grammar.Instructions.ControlFlow;
+using CommonIR.IR.Grammar.Instructions.Memory;
 using CommonIR.IR.Grammar.Objects;
 using System;
 using System.Collections.Generic;
@@ -15,17 +19,31 @@ namespace CommonIR.Generators.Textual.HLSL.Translation
 
         public const int MaximumGroupsPerDimension = 65535;
 
+        public const int MaximumRootSize = 64;
+
         public IRFunction Kernel { get; }
 
         public List<IRLocal> Inputs { get; }
 
         public List<IRLocal> Scalars { get; }
 
-        public IRType OutputElementType { get; }
+        public IRType? OutputElementType { get; }
+
+        public HashSet<IRLocal> Written { get; }
+
+        public bool HasOutput => this.Kernel.HasKernelOutput;
 
         public int ConstantCount => 2 + this.Inputs.Count + this.Scalars.Count;
 
-        public string RootSignature => $"RootConstants(num32BitConstants={this.ConstantCount}, b0), UAV(u0){string.Concat(this.Inputs.Select((_, i) => $", SRV(t{i})"))}";
+        public int OutputRegister => 1;
+
+        public int InputRegister(int input) => (this.HasOutput ? 2 : 1) + input;
+
+        public int BufferCount => 1 + (this.HasOutput ? 1 : 0) + this.Inputs.Count;
+
+        public int RootSize => this.ConstantCount + 2 * this.BufferCount;
+
+        public string RootSignature => $"RootConstants(num32BitConstants={this.ConstantCount}, b0){string.Concat(Enumerable.Range(0, this.BufferCount).Select(i => $", UAV(u{i})"))}";
 
         public HLSLKernelLayout(IRFunction kernel)
         {
@@ -35,9 +53,12 @@ namespace CommonIR.Generators.Textual.HLSL.Translation
             }
 
             this.Kernel = kernel;
-            this.OutputElementType = ElementTypeOf(kernel.KernelOutput.ValueType, kernel.Name);
 
-            StrideOf(this.OutputElementType, kernel.Name);
+            if (kernel.HasKernelOutput)
+            {
+                this.OutputElementType = ElementTypeOf(kernel.KernelOutput.ValueType, kernel.Name);
+                StrideOf(this.OutputElementType, kernel.Name);
+            }
 
             this.Inputs = new List<IRLocal>();
             this.Scalars = new List<IRLocal>();
@@ -56,6 +77,49 @@ namespace CommonIR.Generators.Textual.HLSL.Translation
                 else
                 {
                     throw ErrorHandler.CreateNotImplimented($"Kernel '{kernel.Name}' has a parameter '{parameter.Name}' of type '{parameter.ValueType.Dump(0)}', which cannot be passed to the GPU.");
+                }
+            }
+
+            if (this.RootSize > MaximumRootSize)
+            {
+                throw ErrorHandler.Create($"Kernel '{kernel.Name}' has too many parameters for the GPU: it needs {this.RootSize} of the {MaximumRootSize} values a GPU function gets. Each array takes 3, each other parameter 1, and the function itself 4 (6 with an output buffer).");
+            }
+
+            this.Written = new HashSet<IRLocal>();
+            FindWrites(kernel.Entryblock);
+        }
+
+        void FindWrites(IRBlock block)
+        {
+            foreach (IRInstruction instruction in block.Instructions)
+            {
+                switch (instruction)
+                {
+                    case IRStoreElement { Target: IRLocal target } when this.Inputs.Contains(target):
+                        this.Written.Add(target);
+                        break;
+
+                    case IRConditionalBranch branch:
+                        FindWrites(branch.ThenBlock);
+
+                        if (branch.HasElseBlock)
+                        {
+                            FindWrites(branch.ElseBlock);
+                        }
+                        break;
+
+                    case IRLoop loop:
+                        FindWrites(loop.Block);
+
+                        if (loop.Increment != null)
+                        {
+                            FindWrites(loop.Increment);
+                        }
+                        break;
+
+                    case IRBlock nested:
+                        FindWrites(nested);
+                        break;
                 }
             }
         }

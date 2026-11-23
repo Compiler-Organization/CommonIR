@@ -413,6 +413,16 @@ namespace CommonIR.IR
             return convert;
         }
 
+        public IRValueInstruction BuildMath(IRMathOperation operation, IRValueInstruction value)
+        {
+            return new IRMath(operation, value);
+        }
+
+        public IRValueInstruction BuildReinterpret(IRValueInstruction value, IRType valueType)
+        {
+            return new IRMath(IRMathOperation.Reinterpret, value, valueType);
+        }
+
         public IRValueInstruction BuildBitwise(IRBitwiseOperator bitwiseOperator, IRValueInstruction left, IRValueInstruction right)
         {
             IRValueInstruction bitwise = new IRBitwise(bitwiseOperator, left, right);
@@ -483,6 +493,13 @@ namespace CommonIR.IR
             return dispatch;
         }
 
+        public IRValueInstruction BuildDispatch(IRFunction kernel, IRValueInstruction count, List<IRValueInstruction> arguments, List<IRValueInstruction> residents, List<IRStructProperty> residentSlots)
+        {
+            IRDispatch dispatch = new IRDispatch(kernel, count, arguments, residents, residentSlots);
+            InsertInstruction(dispatch);
+            return dispatch;
+        }
+
         public IRValueInstruction BuildAwait(IRValueInstruction handle, IRType resultType)
         {
             IRAwait await = new IRAwait(handle, resultType);
@@ -542,6 +559,28 @@ namespace CommonIR.IR
         {
             IRValueInstruction malloc = new IRMalloc(byteCount);
             return malloc;
+        }
+
+        /// <summary>
+        /// Releases heap memory. Takes a pointer, or a fat pointer (string or array), whose data is released.
+        /// Freeing null or constant data does nothing.
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <returns></returns>
+        public IRVoidInstruction BuildFree(IRValueInstruction pointer)
+        {
+            if (pointer.ValueType.IsFatPointer)
+            {
+                pointer = BuildConvert(pointer, new IRType(IRDataTypes.Pointer));
+            }
+            else if (pointer.ValueType.DataType is not (IRDataTypes.Pointer or IRDataTypes.Struct))
+            {
+                throw ErrorHandler.Create($"Expected a pointer to free, got '{pointer.ValueType.DataType}'");
+            }
+
+            IRVoidInstruction free = new IRFree(pointer);
+            InsertVoidInstruction(free);
+            return free;
         }
 
         /// <summary>

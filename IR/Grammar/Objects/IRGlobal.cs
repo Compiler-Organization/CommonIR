@@ -38,6 +38,11 @@ namespace CommonIR.IR.Grammar.Objects
         public IRGlobal? LengthCompanion { get; set; }
 
         /// <summary>
+        /// Gives every thread its own zero-initialized copy of the global. Only scalar globals can be thread-local.
+        /// </summary>
+        public bool IsThreadLocal { get; set; }
+
+        /// <summary>
         /// Creates a new initialized global.
         /// </summary>
         /// <param name="name"></param>

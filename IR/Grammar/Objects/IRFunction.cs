@@ -18,9 +18,15 @@ namespace CommonIR.IR.Grammar.Objects
 
         public IRLocal KernelIndex => this.IsKernel ? this.Parameters[0] : throw ErrorHandler.Create($"Function '{this.Name}' is not a kernel.");
 
-        public IRLocal KernelOutput => this.IsKernel ? this.Parameters[1] : throw ErrorHandler.Create($"Function '{this.Name}' is not a kernel.");
+        public bool HasKernelOutput { get; set; } = true;
 
-        public List<IRLocal> KernelParameters => this.IsKernel ? this.Parameters.Skip(2).ToList() : throw ErrorHandler.Create($"Function '{this.Name}' is not a kernel.");
+        public IRLocal KernelOutput => this.IsKernel && this.HasKernelOutput ? this.Parameters[1] : throw ErrorHandler.Create($"Function '{this.Name}' has no kernel output.");
+
+        public IRLocal? KernelOutputOrNull => this.IsKernel && this.HasKernelOutput ? this.Parameters[1] : null;
+
+        public List<IRLocal> KernelParameters => this.IsKernel ? this.Parameters.Skip(this.HasKernelOutput ? 2 : 1).ToList() : throw ErrorHandler.Create($"Function '{this.Name}' is not a kernel.");
+
+        public string? GpuIntrinsic { get; set; }
 
         /// <summary>
         /// The parameters of the function, represented as their respective types.

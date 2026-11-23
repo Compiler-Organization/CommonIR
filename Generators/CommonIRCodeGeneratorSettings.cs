@@ -56,6 +56,12 @@ namespace CommonIR.Generators
                             break;
                         }
 
+                    case CommonIRTargets.Xtensa:
+                        {
+                            _TargetConfiguration = new Binary.Xtensa.CommonIRXtensaConfiguration();
+                            break;
+                        }
+
                     default:
                         {
                             throw ErrorHandler.Create($"Could not automatically generate a configuration for target '{Target}'");

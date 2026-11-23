@@ -35,6 +35,11 @@ Before anything can be done, the code generator must be initialized with setting
 If the target does **not** require any specific settings, we'll use the default constructor ``new()``.
 See the [example here](https://github.com/Compiler-Organization/CommonIR/blob/master/Generators/CIL/CommonIRCILConfiguration.cs) to see how to create a configuration for the Common Intermediate Language target.
 * [OptimizingMode](https://github.com/Compiler-Organization/CommonIR/blob/master/Passes/Optimization/IROptimizer.cs#L54-L85) specifies the optimization level for the code generator. The default is ``OptimizingMode.None``, meaning no optimizations will be performed.
+Every other mode runs its passes over the module again and again until a whole round applies no optimization:
+``Moderate`` folds constants, simplifies arithmetic, comparisons and conversions, turns multiplications and unsigned divisions by powers of two into shifts and removes control flow that can never matter;
+``Aggressive`` also propagates locals that are assigned a constant once, removes assignments to locals that are never read and removes functions that can not be reached;
+``AggressiveExhaustive`` is ``Aggressive`` without a limit on the number of rounds.
+Every rewrite keeps the exact results of the targets, including integer wrap-around, division traps and floating point rounding.
 
 ```csharp
 CommonIRCodeGeneratorSettings codeGenSettings = new CommonIRCodeGeneratorSettings

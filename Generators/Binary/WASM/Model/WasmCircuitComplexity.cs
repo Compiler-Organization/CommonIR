@@ -33,6 +33,7 @@ namespace CommonIR.Generators.Binary.WASM.Model
         private static int LtS(int n) => 5 * n + 3;                          
         private static int LeU(int n) => LtU(n) + 1;
         private static int LeS(int n) => LtS(n) + 1;
+        private static int Shift(int n) => n * (int)Math.Log2(n) * Mux2;
 
 
         private const int F32Add = 1400, F64Add = 3200;
@@ -192,6 +193,42 @@ namespace CommonIR.Generators.Binary.WASM.Model
                 [WasmOpCodes.F64_gt] = FLt(64, F64Nan, F64BothZero),
                 [WasmOpCodes.F64_le] = FLe(64, F64Nan, F64BothZero),
                 [WasmOpCodes.F64_ge] = FLe(64, F64Nan, F64BothZero),
+
+                [WasmOpCodes.Call_indirect] = PcLoad + MemBase + Eq(32) + 32 * HalfAdder,
+                [WasmOpCodes.Drop] = 0,
+                [WasmOpCodes.Select] = RegBits * Mux2,
+                [WasmOpCodes.I32_and] = 32,
+                [WasmOpCodes.I32_or] = 32,
+                [WasmOpCodes.I32_xor] = 32,
+                [WasmOpCodes.I32_shl] = Shift(32),
+                [WasmOpCodes.I32_shr_s] = Shift(32),
+                [WasmOpCodes.I32_shr_u] = Shift(32),
+                [WasmOpCodes.I64_and] = 64,
+                [WasmOpCodes.I64_or] = 64,
+                [WasmOpCodes.I64_xor] = 64,
+                [WasmOpCodes.I64_shl] = Shift(64),
+                [WasmOpCodes.I64_shr_s] = Shift(64),
+                [WasmOpCodes.I64_shr_u] = Shift(64),
+                [WasmOpCodes.I32_wrap_i64] = 0,
+                [WasmOpCodes.I64_extend_i32_s] = 32,
+                [WasmOpCodes.I64_extend_i32_u] = 0,
+                [WasmOpCodes.F32_convert_i32_s] = F32Add,
+                [WasmOpCodes.F32_convert_i32_u] = F32Add,
+                [WasmOpCodes.F32_convert_i64_s] = F32Add,
+                [WasmOpCodes.F32_convert_i64_u] = F32Add,
+                [WasmOpCodes.F32_demote_f64] = F32Add,
+                [WasmOpCodes.F64_convert_i32_s] = F64Add,
+                [WasmOpCodes.F64_convert_i32_u] = F64Add,
+                [WasmOpCodes.F64_convert_i64_s] = F64Add,
+                [WasmOpCodes.F64_convert_i64_u] = F64Add,
+                [WasmOpCodes.F64_promote_f32] = 64,
+                [WasmOpCodes.I32_reinterpret_f32] = 0,
+                [WasmOpCodes.I64_reinterpret_f64] = 0,
+                [WasmOpCodes.F32_reinterpret_i32] = 0,
+                [WasmOpCodes.F64_reinterpret_i64] = 0,
+                [WasmOpCodes.I32_extend8_s] = 24,
+                [WasmOpCodes.I32_extend16_s] = 16,
+                [WasmOpCodes.Prefix_FC] = F64Add,
             };
 
         public static int Of(WasmOpCodes op) => GateCount[op];

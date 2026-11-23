@@ -6,51 +6,54 @@ namespace CommonIR.Generators.Binary.X8664.Model
 {
     internal class X8664UnwindEntry
     {
-        public const int PushOffset = 1;
-
-        public const int FramePointerOffset = 4;
-
         public int Start { get; set; }
 
         public int End { get; set; }
 
-        public int FrameSize { get; set; }
-
         public int PrologSize { get; set; }
 
-        public X8664UnwindEntry(int start, int end, int frameSize, int prologSize)
+        List<ushort[]> Codes { get; } = new List<ushort[]>();
+
+        public X8664UnwindEntry(int start)
         {
             this.Start = start;
-            this.End = end;
-            this.FrameSize = frameSize;
-            this.PrologSize = prologSize;
+        }
+
+        public void Push(int offset, X8664Register register) => this.Codes.Add([Code(offset, 0, (int)register)]);
+
+        public void SetFramePointer(int offset) => this.Codes.Add([Code(offset, 3, 0)]);
+
+        public void SaveXmm(int offset, X8664XmmRegister register, int stackOffset) => this.Codes.Add([Code(offset, 8, (int)register), (ushort)(stackOffset / 16)]);
+
+        public void Allocate(int offset, int size)
+        {
+            if (size <= 0)
+            {
+                return;
+            }
+
+            if (size <= 128)
+            {
+                this.Codes.Add([Code(offset, 2, size / 8 - 1)]);
+            }
+            else if (size <= 512 * 1024 - 8)
+            {
+                this.Codes.Add([Code(offset, 1, 0), (ushort)(size / 8)]);
+            }
+            else
+            {
+                this.Codes.Add([Code(offset, 1, 1), (ushort)(size & 0xFFFF), (ushort)(size >> 16)]);
+            }
         }
 
         public byte[] Serialize()
         {
             List<ushort> codes = new List<ushort>();
 
-            if (this.FrameSize > 0)
+            for (int i = this.Codes.Count - 1; i >= 0; i--)
             {
-                if (this.FrameSize <= 128)
-                {
-                    codes.Add(Code(this.PrologSize, 2, this.FrameSize / 8 - 1));
-                }
-                else if (this.FrameSize <= 512 * 1024 - 8)
-                {
-                    codes.Add(Code(this.PrologSize, 1, 0));
-                    codes.Add((ushort)(this.FrameSize / 8));
-                }
-                else
-                {
-                    codes.Add(Code(this.PrologSize, 1, 1));
-                    codes.Add((ushort)(this.FrameSize & 0xFFFF));
-                    codes.Add((ushort)(this.FrameSize >> 16));
-                }
+                codes.AddRange(this.Codes[i]);
             }
-
-            codes.Add(Code(FramePointerOffset, 3, 0));
-            codes.Add(Code(PushOffset, 0, 5));
 
             int count = codes.Count;
 

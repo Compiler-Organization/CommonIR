@@ -14,6 +14,18 @@ For more about how to use CommonIR, see [the usage examples](https://github.com/
 
 For more info about target development philosophy, see [the general target spec](https://github.com/Compiler-Organization/CommonIR/blob/master/Documentation/General%20target%20spec.md).
 
+# Supported targets
+These are the current targets incorporated into CommonIR.
+
+| Name          | Type    | Description                     | Status       |
+| ------------- | ------- | ------------------------------- | ------------ |
+| WASM          | Binary  | Used in production environments | Complete     |
+| x64 (Windows) | Binary  | Used in production environments | Complete     |
+| Xtensa        | Binary  | Tested on an Xtensa LX7         | Complete     |
+| CIL           | Binary  | Early target used for testing   | Experimental |
+| DXIL          | Binary  | Wrapper around DXC              | Complete     |
+| HLSL          | Textual | Used in production environments | Complete     |
+
 # Using CommonIR (with examples)
 To understand how to use CommonIR, we must first establish the fundamental facts about the IR and how it lowers into target code.
 

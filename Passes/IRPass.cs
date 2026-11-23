@@ -7,6 +7,6 @@ namespace CommonIR.Passes
 {
     public interface IRPass
     {
-        public void Pass();
+        public bool Pass();
     }
 }

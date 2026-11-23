@@ -16,6 +16,20 @@ namespace CommonIR.Generators.Textual.HLSL.Emission
 {
     internal class HLSLInstructionEmitter
     {
+        public const string FaultFunction = "__fault";
+
+        public const string FaultBuffer = "__faults";
+
+        public const string LoadOutputFunction = "__load_output";
+
+        public const string StoreOutputFunction = "__store_output";
+
+        public static string LoadInputFunction(int input) => $"__load_input{input}";
+
+        public static string StoreInputFunction(int input) => $"__store_input{input}";
+
+        IRLocal? Output => this.Function.KernelOutputOrNull;
+
         IRFunction Function { get; set; }
 
         HLSLKernelLayout Layout { get; set; }
@@ -96,12 +110,15 @@ namespace CommonIR.Generators.Textual.HLSL.Emission
                     break;
 
                 case IRStoreElement storeElement:
-                    if (storeElement.Target is not IRLocal target || target != this.Function.KernelOutput)
                     {
-                        throw ErrorHandler.CreateNotImplimented("Only the output buffer of a kernel can be written to when emitting HLSL. Input arrays are read-only on the GPU.");
-                    }
+                        if (storeElement.Target is not IRLocal target || (target != this.Output && !this.Layout.Inputs.Contains(target)))
+                        {
+                            throw ErrorHandler.CreateNotImplimented("Only the kernel's arrays and output buffer can be written to when emitting HLSL.");
+                        }
 
-                    builder.AppendLine($"{indent}{NameOf(target)}[{EmitIndex(storeElement.Index)}] = {EmitExpression(storeElement.Value)};");
+                        string function = target == this.Output ? StoreOutputFunction : StoreInputFunction(this.Layout.Inputs.IndexOf(target));
+                        builder.AppendLine($"{indent}{function}({EmitIndex(storeElement.Index)}, {EmitExpression(storeElement.Value)});");
+                    }
                     break;
 
                 case IRConditionalBranch conditionalBranch:
@@ -172,6 +189,10 @@ namespace CommonIR.Generators.Textual.HLSL.Emission
                     builder.AppendLine($"{indent}}}");
                     break;
 
+                case IRCall { Function.GpuIntrinsic: not null } call:
+                    builder.AppendLine($"{indent}{EmitIntrinsic(call)};");
+                    break;
+
                 case IRCall or IRCallIndirect or IRDispatch or IRAwait:
                     throw ErrorHandler.CreateNotImplimented("Kernels cannot call functions when emitting HLSL.");
 
@@ -190,7 +211,7 @@ namespace CommonIR.Generators.Textual.HLSL.Emission
                 throw ErrorHandler.CreateNotImplimented("Only stores to locals can be emitted as HLSL.");
             }
 
-            if (this.Layout.Inputs.Contains(local) || local == this.Function.KernelOutput)
+            if (this.Layout.Inputs.Contains(local) || local == this.Output)
             {
                 throw ErrorHandler.CreateNotImplimented($"The buffer '{local.Name}' cannot be reassigned on the GPU.");
             }
@@ -222,10 +243,14 @@ namespace CommonIR.Generators.Textual.HLSL.Emission
                 IRBitwise bitwise => EmitBitwise(bitwise),
                 IRCompare compare => EmitCompare(compare),
                 IRConvert convert => EmitConvert(convert),
+                IRMath { Operation: IRMathOperation.SquareRoot } math => $"sqrt({EmitExpression(math.Value)})",
+                IRMath { Operation: IRMathOperation.Reinterpret, ValueType.DataType: IRDataTypes.UInt32 or IRDataTypes.Int32, Value.ValueType.DataType: IRDataTypes.Float32 } math => $"asuint({EmitExpression(math.Value)})",
+                IRMath { Operation: IRMathOperation.Reinterpret, ValueType.DataType: IRDataTypes.Float32, Value.ValueType.DataType: IRDataTypes.UInt32 or IRDataTypes.Int32 } math => $"asfloat({EmitExpression(math.Value)})",
 
                 IRLoadElement loadElement => EmitLoadElement(loadElement),
                 IRLength length => EmitLength(length),
 
+                IRCall { Function.GpuIntrinsic: not null } call => EmitIntrinsic(call),
                 IRCall or IRCallIndirect or IRDispatch or IRAwait => throw ErrorHandler.CreateNotImplimented("Kernels cannot call functions when emitting HLSL."),
                 IRConstantString => throw ErrorHandler.CreateNotImplimented("Strings are not supported when emitting HLSL."),
                 IRInstantiateArray or IRInstantiateStruct or IRMalloc => throw ErrorHandler.CreateNotImplimented("Kernels cannot allocate memory when emitting HLSL."),
@@ -234,9 +259,14 @@ namespace CommonIR.Generators.Textual.HLSL.Emission
             };
         }
 
+        string EmitIntrinsic(IRCall call)
+        {
+            return $"{call.Function.GpuIntrinsic}({string.Join(", ", call.Arguments.Select(EmitExpression))})";
+        }
+
         string EmitLocal(IRLocal local)
         {
-            if (local.ValueType.DataType == IRDataTypes.Array && !this.Layout.Inputs.Contains(local) && local != this.Function.KernelOutput)
+            if (local.ValueType.DataType == IRDataTypes.Array && !this.Layout.Inputs.Contains(local) && local != this.Output)
             {
                 throw ErrorHandler.CreateNotImplimented($"Array '{local.Name}' cannot be used on the GPU. Only the kernel's input arrays and output buffer are available.");
             }
@@ -346,19 +376,20 @@ namespace CommonIR.Generators.Textual.HLSL.Emission
 
         string EmitLoadElement(IRLoadElement loadElement)
         {
-            if (loadElement.Target is not IRLocal target || (!this.Layout.Inputs.Contains(target) && target != this.Function.KernelOutput))
+            if (loadElement.Target is not IRLocal target || (!this.Layout.Inputs.Contains(target) && target != this.Output))
             {
                 throw ErrorHandler.CreateNotImplimented("Only the kernel's input arrays and output buffer can be indexed when emitting HLSL.");
             }
 
-            return $"{NameOf(target)}[{EmitIndex(loadElement.Index)}]";
+            string function = target == this.Output ? LoadOutputFunction : LoadInputFunction(this.Layout.Inputs.IndexOf(target));
+            return $"{function}({EmitIndex(loadElement.Index)})";
         }
 
         string EmitLength(IRLength length)
         {
             if (length.Target is IRLocal target)
             {
-                if (target == this.Function.KernelOutput)
+                if (target == this.Output)
                 {
                     return "(int)__count";
                 }

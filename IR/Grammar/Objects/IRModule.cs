@@ -20,6 +20,11 @@ namespace CommonIR.IR.Grammar.Objects
 
         public IRFunction? EntryPoint { get; set; }
 
+        /// <summary>
+        /// The program starts threads of its own, so the runtime has to protect the state it shares between them.
+        /// </summary>
+        public bool IsMultithreaded { get; set; }
+
         public IRGrammar? Parent { get; set; }
 
         public string Name { get; set; }
@@ -175,18 +180,22 @@ namespace CommonIR.IR.Grammar.Objects
             return bytes;
         }
 
-        public IRFunction CreateKernel(string name, IRType outputType, List<IRLocal> parameterTypes)
+        public IRFunction CreateKernel(string name, IRType? outputType, List<IRLocal> parameterTypes)
         {
-            List<IRLocal> parameters = [
-                new IRLocal("index", IRDataTypes.Int32, isMutable: false),
-                new IRLocal("buffer", outputType, isMutable: true),
-                .. parameterTypes
-            ];
+            List<IRLocal> parameters = [new IRLocal("index", IRDataTypes.Int32, isMutable: false)];
+
+            if (outputType is not null)
+            {
+                parameters.Add(new IRLocal("buffer", outputType, isMutable: true));
+            }
+
+            parameters.AddRange(parameterTypes);
 
             IRFunction kernel = new IRFunction(name, parameters, [new IRType(IRDataTypes.Void)], isExport: false)
             {
                 Parent = this,
-                IsKernel = true
+                IsKernel = true,
+                HasKernelOutput = outputType is not null
             };
 
             this.Functions.Add(kernel);

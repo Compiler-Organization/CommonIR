@@ -10,5 +10,6 @@ namespace CommonIR.Generators
         CommonIntermediateLanguage,
         HLSL,
         X8664,
+        Xtensa,
     }
 }

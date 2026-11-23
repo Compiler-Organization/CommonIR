@@ -22,6 +22,12 @@ namespace CommonIR.Generators
 
         public List<SourceFile> GenerateSourceFiles(IRModule module)
         {
+            if (Settings.Target is CommonIRTargets.X8664 or CommonIRTargets.WebAssembly or CommonIRTargets.Xtensa)
+            {
+                new IRInliner(module).Pass();
+                new IRTailAccumulator(module).Pass();
+            }
+
             IROptimizer optimizer = new IROptimizer(module);
             optimizer.Optimize(this.Settings.OptimizingMode);
 
@@ -47,8 +53,16 @@ namespace CommonIR.Generators
 
                 case CommonIRTargets.X8664:
                     {
-                        X8664Generator x8664Generator = new X8664Generator(module, Settings.TargetConfiguration as CommonIRX8664Configuration ?? throw ErrorHandler.Create("Could not create target configuration for x86-64."));
+                        CommonIRX8664Configuration configuration = Settings.TargetConfiguration as CommonIRX8664Configuration ?? throw ErrorHandler.Create("Could not create target configuration for x86-64.");
+                        configuration.OptimizeLoops = this.Settings.OptimizingMode != OptimizingMode.None;
+                        X8664Generator x8664Generator = new X8664Generator(module, configuration);
                         return x8664Generator.GenerateSourceFiles();
+                    }
+
+                case CommonIRTargets.Xtensa:
+                    {
+                        Binary.Xtensa.CommonIRXtensaConfiguration configuration = Settings.TargetConfiguration as Binary.Xtensa.CommonIRXtensaConfiguration ?? throw ErrorHandler.Create("Could not create target configuration for Xtensa.");
+                        return new Binary.Xtensa.XtensaGenerator(module, configuration).GenerateSourceFiles();
                     }
 
                 default:

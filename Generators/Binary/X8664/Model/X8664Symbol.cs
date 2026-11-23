@@ -54,17 +54,27 @@ namespace CommonIR.Generators.Binary.X8664.Model
 
         public X8664Symbol? Symbol { get; }
 
-        X8664Memory(X8664Register baseRegister, int displacement, X8664Symbol? symbol)
+        public X8664Register? Index { get; }
+
+        public int Scale { get; }
+
+        X8664Memory(X8664Register baseRegister, int displacement, X8664Symbol? symbol, X8664Register? index = null, int scale = 1)
         {
             this.Base = baseRegister;
             this.Displacement = displacement;
             this.Symbol = symbol;
+            this.Index = index;
+            this.Scale = scale;
         }
 
         public static X8664Memory At(X8664Register baseRegister, int displacement = 0) => new X8664Memory(baseRegister, displacement, null);
 
+        public static X8664Memory Indexed(X8664Register baseRegister, X8664Register index, int scale, int displacement = 0) => new X8664Memory(baseRegister, displacement, null, index, scale);
+
         public static X8664Memory Rip(X8664Symbol symbol, int addend = 0) => new X8664Memory(X8664Register.RAX, addend, symbol);
 
-        public X8664Memory Offset(int bytes) => new X8664Memory(this.Base, this.Displacement + bytes, this.Symbol);
+        public X8664Memory Offset(int bytes) => new X8664Memory(this.Base, this.Displacement + bytes, this.Symbol, this.Index, this.Scale);
+
+        public bool Uses(X8664Register register) => this.Symbol == null && (this.Base == register || this.Index == register);
     }
 }

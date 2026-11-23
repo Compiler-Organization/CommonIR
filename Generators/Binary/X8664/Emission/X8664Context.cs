@@ -16,7 +16,13 @@ namespace CommonIR.Generators.Binary.X8664.Emission
 
         public Dictionary<IRFunctionImport, X8664Symbol> Imports { get; } = new Dictionary<IRFunctionImport, X8664Symbol>();
 
+        public Dictionary<IRFunctionImport, IRFunction> RuntimeImports { get; } = new Dictionary<IRFunctionImport, IRFunction>();
+
         public Dictionary<IRGlobal, X8664Symbol> Globals { get; } = new Dictionary<IRGlobal, X8664Symbol>();
+
+        public Dictionary<IRGlobal, int> ThreadLocals { get; } = new Dictionary<IRGlobal, int>();
+
+        public X8664Symbol? ThreadIndex { get; set; }
 
         public Dictionary<IRValueInstruction, X8664Symbol> Constants { get; } = new Dictionary<IRValueInstruction, X8664Symbol>();
 
@@ -28,6 +34,8 @@ namespace CommonIR.Generators.Binary.X8664.Emission
 
         public IRFunction Malloc { get; set; } = null!;
 
+        public IRFunction Free { get; set; } = null!;
+
         public IRFunction Panic { get; set; } = null!;
 
         public IRFunction Await { get; set; } = null!;
@@ -35,6 +43,8 @@ namespace CommonIR.Generators.Binary.X8664.Emission
         public Dictionary<IRFunction, IRFunction> Dispatchers { get; } = new Dictionary<IRFunction, IRFunction>();
 
         public List<X8664UnwindEntry> UnwindEntries { get; } = new List<X8664UnwindEntry>();
+
+        public bool OptimizeLoops { get; set; }
 
         public X8664Symbol AddReadOnly(string name, byte[] bytes, int alignment)
         {
@@ -55,6 +65,19 @@ namespace CommonIR.Generators.Binary.X8664.Emission
             {
                 symbol = AddReadOnly($"message.{this.Messages.Count}", [.. Encoding.UTF8.GetBytes(text), 0], 1);
                 this.Messages[text] = symbol;
+            }
+
+            return symbol;
+        }
+
+        Dictionary<long, X8664Symbol> FloatConstants { get; } = new Dictionary<long, X8664Symbol>();
+
+        public X8664Symbol FloatConstant(long bits)
+        {
+            if (!this.FloatConstants.TryGetValue(bits, out X8664Symbol? symbol))
+            {
+                symbol = AddReadOnly($"float.{this.FloatConstants.Count}", [.. BitConverter.GetBytes(bits), .. BitConverter.GetBytes(bits)], 16);
+                this.FloatConstants[bits] = symbol;
             }
 
             return symbol;

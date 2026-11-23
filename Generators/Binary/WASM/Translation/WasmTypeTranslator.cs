@@ -17,9 +17,10 @@ namespace CommonIR.Generators.Binary.WASM.Translation
 
             // Scalars
             IRDataTypes.Bool => WasmFormTypes.I32,
-            IRDataTypes.Int8 => WasmFormTypes.I32,
-            IRDataTypes.Int32 => WasmFormTypes.I32,
-            IRDataTypes.Int64 => WasmFormTypes.I64,
+            IRDataTypes.Int8 or IRDataTypes.UInt8 => WasmFormTypes.I32,
+            IRDataTypes.Int16 or IRDataTypes.UInt16 => WasmFormTypes.I32,
+            IRDataTypes.Int32 or IRDataTypes.UInt32 => WasmFormTypes.I32,
+            IRDataTypes.Int64 or IRDataTypes.UInt64 => WasmFormTypes.I64,
             IRDataTypes.Float32 => WasmFormTypes.F32,
             IRDataTypes.Float64 => WasmFormTypes.F64,
             IRDataTypes.Void => WasmFormTypes.Void,

@@ -14,11 +14,44 @@ namespace CommonIR.Generators.Binary.X8664.Emission
 
         public int Position => this.Code.Count;
 
+        int lastJumpStart = -1;
+
+        int lastJumpEnd = -1;
+
+        X8664Symbol? lastJumpTarget;
+
+        readonly List<X8664Symbol> labelsAfterJump = new List<X8664Symbol>();
+
+        public Action? Joined { get; set; }
+
         public void Bind(X8664Symbol label)
         {
             if (label.IsBound)
             {
                 throw ErrorHandler.Create($"Label '{label.Name}' has already been bound.");
+            }
+
+            this.Joined?.Invoke();
+
+            if (this.lastJumpTarget != null && this.Position == this.lastJumpEnd)
+            {
+                if (label == this.lastJumpTarget && this.Fixups.Count > 0 && this.Fixups[^1].Target == label && this.Fixups[^1].Position == this.lastJumpEnd - 4)
+                {
+                    this.Code.RemoveRange(this.lastJumpStart, this.lastJumpEnd - this.lastJumpStart);
+                    this.Fixups.RemoveAt(this.Fixups.Count - 1);
+
+                    foreach (X8664Symbol moved in this.labelsAfterJump)
+                    {
+                        moved.Offset = this.lastJumpStart;
+                    }
+
+                    this.lastJumpTarget = null;
+                    this.labelsAfterJump.Clear();
+                }
+                else
+                {
+                    this.labelsAfterJump.Add(label);
+                }
             }
 
             label.Section = X8664Sections.Text;
@@ -89,15 +122,46 @@ namespace CommonIR.Generators.Binary.X8664.Emission
             }
 
             int baseRegister = (int)memory.Base;
+            int displacement = memory.Displacement;
+            int mode = displacement == 0 && (baseRegister & 7) != 5 ? 0x00 : displacement >= sbyte.MinValue && displacement <= sbyte.MaxValue ? 0x40 : 0x80;
 
-            Byte(0x80 | ((reg & 7) << 3) | (baseRegister & 7));
-
-            if ((baseRegister & 7) == 4)
+            if (memory.Index is X8664Register index)
             {
-                Byte(0x24);
+                if (index == X8664Register.RSP)
+                {
+                    throw ErrorHandler.Create("RSP cannot be used as an index register.");
+                }
+
+                int scale = memory.Scale switch
+                {
+                    1 => 0,
+                    2 => 1,
+                    4 => 2,
+                    8 => 3,
+                    _ => throw ErrorHandler.Create($"Invalid scale {memory.Scale}.")
+                };
+
+                Byte(mode | ((reg & 7) << 3) | 0x04);
+                Byte((scale << 6) | (((int)index & 7) << 3) | (baseRegister & 7));
+            }
+            else
+            {
+                Byte(mode | ((reg & 7) << 3) | (baseRegister & 7));
+
+                if ((baseRegister & 7) == 4)
+                {
+                    Byte(0x24);
+                }
             }
 
-            Int32(memory.Displacement);
+            if (mode == 0x40)
+            {
+                Byte(displacement);
+            }
+            else if (mode == 0x80)
+            {
+                Int32(displacement);
+            }
         }
 
         void EncodeRegister(int prefix, bool wide, byte[] opcode, int reg, int rm, bool forceRex = false)
@@ -124,7 +188,22 @@ namespace CommonIR.Generators.Binary.X8664.Emission
                 Byte(prefix);
             }
 
-            Rex(wide, reg, memory.Symbol != null ? 0 : (int)memory.Base, forceRex);
+            int rex = 0x40 | (wide ? 0x08 : 0) | (((reg >> 3) & 1) << 2);
+
+            if (memory.Symbol == null)
+            {
+                rex |= ((int)memory.Base >> 3) & 1;
+
+                if (memory.Index is X8664Register index)
+                {
+                    rex |= (((int)index >> 3) & 1) << 1;
+                }
+            }
+
+            if (rex != 0x40 || forceRex)
+            {
+                Byte(rex);
+            }
 
             foreach (byte b in opcode)
             {
@@ -229,6 +308,30 @@ namespace CommonIR.Generators.Binary.X8664.Emission
         }
 
         public void Load(X8664Register destination, X8664Memory memory) => Load(8, false, destination, memory);
+
+        /// <summary>
+        /// Loads the address of this thread's block of thread-local data: TEB.ThreadLocalStoragePointer[index].
+        /// </summary>
+        public void LoadThreadBlock(X8664Register destination, X8664Symbol index)
+        {
+            int register = (int)destination;
+
+            Load(4, false, destination, X8664Memory.Rip(index));
+
+            Byte(0x48 | ((register >> 3) & 1));
+            Byte(0xC1);
+            Byte(0xE0 | (register & 7));
+            Byte(3);
+
+            Byte(0x65);
+            Byte(0x48 | (((register >> 3) & 1) << 2));
+            Byte(0x03);
+            Byte(0x04 | ((register & 7) << 3));
+            Byte(0x25);
+            Int32(0x58);
+
+            Load(destination, X8664Memory.At(destination));
+        }
 
         public void Store(int size, X8664Memory memory, X8664Register source)
         {
@@ -413,8 +516,23 @@ namespace CommonIR.Generators.Binary.X8664.Emission
 
         public void Jump(X8664Symbol target)
         {
+            this.lastJumpStart = this.Position;
             Byte(0xE9);
             RelativeTarget(target);
+            this.lastJumpEnd = this.Position;
+            this.lastJumpTarget = target;
+            this.labelsAfterJump.Clear();
+        }
+
+        public void Jump(X8664Register register)
+        {
+            EncodeRegister(0, false, [0xFF], 4, (int)register);
+        }
+
+        public void TableEntry(X8664Symbol target, X8664Symbol table)
+        {
+            this.Fixups.Add(new X8664Fixup(this.Position, target, this.Position + 4 - table.Offset));
+            Int32(0);
         }
 
         public void JumpIf(X8664Condition condition, X8664Symbol target)
@@ -469,6 +587,34 @@ namespace CommonIR.Generators.Binary.X8664.Emission
             EncodeMemory(ScalarPrefix(isDouble), false, [0x0F, 0x11], (int)source, memory);
         }
 
+        public void LoadPacked(X8664XmmRegister destination, X8664Memory memory)
+        {
+            EncodeMemory(0, false, [0x0F, 0x10], (int)destination, memory);
+        }
+
+        public void StorePacked(X8664Memory memory, X8664XmmRegister source)
+        {
+            EncodeMemory(0, false, [0x0F, 0x11], (int)source, memory);
+        }
+
+        public void PackedArithmetic(X8664SseOperation operation, bool isDouble, X8664XmmRegister destination, X8664XmmRegister source)
+        {
+            EncodeRegister(isDouble ? 0x66 : 0, false, [0x0F, (byte)operation], (int)destination, (int)source);
+        }
+
+        public void Broadcast(bool isDouble, X8664XmmRegister register)
+        {
+            if (isDouble)
+            {
+                EncodeRegister(0x66, false, [0x0F, 0x14], (int)register, (int)register);
+            }
+            else
+            {
+                EncodeRegister(0, false, [0x0F, 0xC6], (int)register, (int)register);
+                Byte(0);
+            }
+        }
+
         public void MovXmm(X8664XmmRegister destination, X8664XmmRegister source)
         {
             if (destination != source)
@@ -507,14 +653,14 @@ namespace CommonIR.Generators.Binary.X8664.Emission
             EncodeRegister(0xF2, false, [0x0F, 0x5A], (int)destination, (int)source);
         }
 
-        public void MovToXmm(X8664XmmRegister destination, X8664Register source)
+        public void MovToXmm(X8664XmmRegister destination, X8664Register source, bool wide = true)
         {
-            EncodeRegister(0x66, true, [0x0F, 0x6E], (int)destination, (int)source);
+            EncodeRegister(0x66, wide, [0x0F, 0x6E], (int)destination, (int)source);
         }
 
-        public void MovFromXmm(X8664Register destination, X8664XmmRegister source)
+        public void MovFromXmm(X8664Register destination, X8664XmmRegister source, bool wide = true)
         {
-            EncodeRegister(0x66, true, [0x0F, 0x7E], (int)source, (int)destination);
+            EncodeRegister(0x66, wide, [0x0F, 0x7E], (int)source, (int)destination);
         }
 
         public void Xorps(X8664XmmRegister destination, X8664XmmRegister source)

@@ -27,16 +27,22 @@ namespace CommonIR.Generators.Binary.WASM.Translation
         // You can see the order of the sections in WasmSectionIDs. the data section is translated before the code section to handle forward references.
         public List<WasmSection> TranslateSections()
         {
+            WasmTypeSection typeSection = TranslateTypeSection();
+
             List<WasmSection> sections = new List<WasmSection>()
             {
-                TranslateTypeSection(),
+                typeSection,
                 TranslateImportSection(),
                 TranslateFunctionSection(),
+                TranslateTableSection(),
                 // TranslateMemorySection(),
                 TranslateGlobalSection(),
                 TranslateExportSection(),
                 TranslateStartSection(),
+                TranslateElementSection(),
             };
+
+            this.FactorizedFunctions.TypeIndexOf = (parameters, results) => TypeIndexOf(typeSection, parameters, results);
 
             WasmDataSection dataSection = TranslateDataSection();
             WasmCodeSection codeSection = TranslateCodeSection();
@@ -53,7 +59,7 @@ namespace CommonIR.Generators.Binary.WASM.Translation
 
             foreach (IRType retType in returnTypes)
             {
-                if (retType.IsReferenceType)
+                if (retType.IsFatPointer)
                 {
                     flattenedReturnTypes.Add(new IRType(IRDataTypes.Int32));
                     flattenedReturnTypes.Add(new IRType(IRDataTypes.Int32));
@@ -72,7 +78,7 @@ namespace CommonIR.Generators.Binary.WASM.Translation
 
             foreach (IRLocal parameter in parameters)
             {
-                if (parameter.ValueType.IsReferenceType)
+                if (parameter.ValueType.IsFatPointer)
                 {
                     IRLocal aggregatePointer = new IRLocal($"{parameter.Name}_ptr", parameter.ValueType, parameter.IsMutable)
                     {
@@ -131,6 +137,54 @@ namespace CommonIR.Generators.Binary.WASM.Translation
             return typeSection;
         }
 
+        /// <summary>
+        /// Finds the type with exactly these parameters and results, or adds it. Types are only ever appended, so the
+        /// indices of the types already used by imports and functions do not change.
+        /// </summary>
+        static ulong TypeIndexOf(WasmTypeSection typeSection, List<WasmFormTypes> parameters, List<WasmFormTypes> results)
+        {
+            int index = typeSection.Types.FindIndex(t => t.Form == WasmForms.Function && t.ParameterTypes.SequenceEqual(parameters) && t.Returns.SequenceEqual(results));
+
+            if (index >= 0)
+            {
+                return (ulong)index;
+            }
+
+            typeSection.Types.Add(new WasmTypeSectionType { Form = WasmForms.Function, ParameterTypes = [.. parameters], Returns = [.. results] });
+            return (ulong)(typeSection.Types.Count - 1);
+        }
+
+        /// <summary>
+        /// Every function goes into one table, so a function reference is a table index that call_indirect, and JavaScript
+        /// through the exported '__table', can call. Index 0 stays empty, so a null function reference is 0.
+        /// </summary>
+        private WasmTableSection TranslateTableSection()
+        {
+            Dictionary<IRFunction, int> tableIndices = this.Module.Functions.Select((function, index) => (function, index)).ToDictionary(f => f.function, f => f.index + 1);
+
+            this.FactorizedFunctions.TableIndexOf = function => tableIndices.TryGetValue(function, out int index)
+                ? index
+                : throw ErrorHandler.Create($"Function '{function.Name}' is not part of the module.");
+
+            WasmTableSection tableSection = new WasmTableSection();
+            tableSection.Tables.Add(new WasmTableEntry { MinElements = (uint)this.Module.Functions.Count + 1, MaxElements = (uint)this.Module.Functions.Count + 1 });
+            return tableSection;
+        }
+
+        private WasmElementSection TranslateElementSection()
+        {
+            WasmElementSection elementSection = new WasmElementSection();
+
+            elementSection.Segments.Add(new WasmElementSegment
+            {
+                Mode = WasmElementSegmentMode.LegacyActive,
+                OffsetExpression = [(byte)WasmOpCodes.I32_const, .. LEB128.EncodeSigned(1), (byte)WasmOpCodes.End],
+                FunctionIndices = this.Module.Functions.Select(f => f.Offset).ToList(),
+            });
+
+            return elementSection;
+        }
+
         private WasmImportSection TranslateImportSection()
         {
             WasmImportSection importSection = new WasmImportSection();
@@ -186,12 +240,19 @@ namespace CommonIR.Generators.Binary.WASM.Translation
 
             foreach(IRGlobal global in this.Module.Globals)
             {
+                WasmInstructionEmitter emitter = new WasmInstructionEmitter(this.Module.EntryPoint ?? throw ErrorHandler.Create("Cannot initialize globals if no entrypoint is defined."), this.FactorizedFunctions);
+
+                // A string or array global is two globals, its pointer and its length, which share one initial value.
+                byte[] initialValue = global.InitialValue is IRConstantInteger constant
+                    ? emitter.EmitScalarConstant(global.ValueType.IsFatPointer ? IRDataTypes.Int32 : global.ValueType.DataType, constant.Value)
+                    : emitter.EmitInstruction(global.InitialValue);
+
                 WasmGlobalEntry globalEntry = new WasmGlobalEntry
                 {
                     IsMutable = global.IsMutable,
                     Type = WasmTypeTranslator.TranslateIRType(global.ValueType),
                     InitializationExpression = [
-                        .. new WasmInstructionEmitter(this.Module.EntryPoint ?? throw ErrorHandler.Create("Cannot initialize globals if no entrypoint is defined."), this.FactorizedFunctions).EmitInstruction(global.InitialValue), 
+                        .. initialValue,
                         (byte)WasmOpCodes.End
                     ]
                 };
@@ -214,6 +275,14 @@ namespace CommonIR.Generators.Binary.WASM.Translation
                     Index = function.Offset
                 });
             }
+
+            exportSection.Exports.Add(new WasmExportEntry
+            {
+                Name = "__table",
+                Kind = WasmExportKind.Table,
+                Index = 0
+            });
+
             return exportSection;
         }
 
@@ -245,8 +314,19 @@ namespace CommonIR.Generators.Binary.WASM.Translation
 
             foreach (IRFunction function in Module.Functions)
             {
+                WasmLocalLayout.Assign(function);
+
                 WasmInstructionEmitter instructionEmitter = new WasmInstructionEmitter(function, this.FactorizedFunctions);
-                List<byte> bodyBytes = instructionEmitter.EmitInstructions(function.Entryblock.Instructions);
+                List<byte> bodyBytes = function == this.FactorizedFunctions.Malloc ? this.FactorizedFunctions.EmitMallocBody()
+                    : function == this.FactorizedFunctions.Free ? this.FactorizedFunctions.EmitFreeBody()
+                    : instructionEmitter.EmitInstructions(function.Entryblock.Instructions);
+
+                // A function that returns a value must not fall off its end. Every path ends in a return, but WebAssembly's
+                // validator does not know that a branch that returns on both sides never continues.
+                if (function != this.FactorizedFunctions.Malloc && function.ReturnTypes.Any(r => r.DataType != IRDataTypes.Void))
+                {
+                    bodyBytes.Add((byte)WasmOpCodes.Unreachable);
+                }
 
                 bodyBytes.Add((byte)WasmOpCodes.End);
 
@@ -297,7 +377,7 @@ namespace CommonIR.Generators.Binary.WASM.Translation
         private WasmDataSection TranslateDataSection()
         {
             WasmDataSection dataSection = new WasmDataSection();
-            ulong currentMemoryAddress = 0;
+            ulong currentMemoryAddress = WasmFactorizedFunctions.DataStart;
             var irStrings = this.Module.Objects.OfType<IRConstantString>().ToList();
 
             foreach (IRConstantString irString in irStrings)

@@ -24,29 +24,50 @@ namespace CommonIR.IR.Grammar.Instructions.ControlFlow
 
         public IRType ValueType { get; set; } = new IRType(IRDataTypes.Pointer);
 
+        public List<IRValueInstruction> Residents { get; set; } = new List<IRValueInstruction>();
+
+        public List<IRStructProperty> ResidentSlots { get; set; } = new List<IRStructProperty>();
+
         public IRDispatch(IRFunction kernel, IRValueInstruction count, List<IRValueInstruction> arguments)
+            : this(kernel, count, arguments, [], [])
+        {
+        }
+
+        public IRDispatch(IRFunction kernel, IRValueInstruction count, List<IRValueInstruction> arguments, List<IRValueInstruction> residents, List<IRStructProperty> residentSlots)
         {
             if (!kernel.IsKernel)
             {
                 throw ErrorHandler.Create($"Cannot dispatch '{kernel.Name}' as it is not a kernel.");
             }
 
-            if (kernel.Parameters.Count - 2 != arguments.Count)
+            int expected = kernel.KernelParameters.Count;
+
+            if (expected != arguments.Count)
             {
-                throw ErrorHandler.Create($"Kernel '{kernel.Name}' expects {kernel.Parameters.Count - 2} argument(s), but got {arguments.Count}.");
+                throw ErrorHandler.Create($"Kernel '{kernel.Name}' expects {expected} argument(s), but got {arguments.Count}.");
+            }
+
+            int arrays = kernel.KernelParameters.Count(p => p.ValueType.DataType == IRDataTypes.Array);
+
+            if (residents.Count != residentSlots.Count || (residents.Count != 0 && residents.Count != arrays))
+            {
+                throw ErrorHandler.Create($"Kernel '{kernel.Name}' has {arrays} array parameter(s), but the dispatch names {residents.Count} resident array(s).");
             }
 
             this.Kernel = kernel;
             this.Count = count;
             this.Arguments = arguments;
+            this.Residents = residents;
+            this.ResidentSlots = residentSlots;
 
             this.Kernel.References.Add(this);
 
             count.References.Add(this);
             this.Operands.Add(count);
             this.Operands.AddRange(arguments);
+            this.Operands.AddRange(residents);
 
-            foreach (IRValueInstruction argument in arguments)
+            foreach (IRValueInstruction argument in arguments.Concat(residents))
             {
                 argument.References.Add(this);
             }
@@ -54,7 +75,8 @@ namespace CommonIR.IR.Grammar.Instructions.ControlFlow
 
         public string Dump(int indentation)
         {
-            return $"{new string('\t', indentation)}dispatch {this.Kernel.Name} [{this.Count.Dump(0)}] ({string.Join(", ", this.Arguments.Select(a => a.Dump(0)))})";
+            string residents = this.Residents.Count == 0 ? "" : $" resident ({string.Join(", ", this.Residents.Select(a => a.Dump(0)))})";
+            return $"{new string('\t', indentation)}dispatch {this.Kernel.Name} [{this.Count.Dump(0)}] ({string.Join(", ", this.Arguments.Select(a => a.Dump(0)))}){residents}";
         }
     }
 }

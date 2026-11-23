@@ -35,7 +35,7 @@ namespace CommonIR.Generators.Binary.WASM.Emission
             }
 
             string uniqueName = $"$reg_{dataType.ToString().ToLower()}_{TotalRegistered++}";
-            IRLocal newLocal = Function.CreateLocal(uniqueName, new IRType(dataType), isMutable: true);
+            IRLocal newLocal = WasmLocalLayout.CreateLocal(Function, uniqueName, new IRType(dataType));
 
             TrackedLocals.Add(newLocal);
             return newLocal;

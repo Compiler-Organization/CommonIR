@@ -34,6 +34,14 @@ namespace CommonIR.Generators.Binary.X8664.Model
 
         public int ExceptionDirectorySize { get; set; }
 
+        public int ThreadDirectory { get; set; }
+
+        public int ThreadDirectorySize { get; set; }
+
+        public int RelocationDirectory { get; set; }
+
+        public int RelocationDirectorySize { get; set; }
+
         public ushort Subsystem { get; set; } = 3;
 
         public ulong StackReserve { get; set; } = 0x100000;
@@ -115,6 +123,8 @@ namespace CommonIR.Generators.Binary.X8664.Model
                 {
                     1 => (this.ImportDirectory, this.ImportDirectorySize),
                     3 => (this.ExceptionDirectory, this.ExceptionDirectorySize),
+                    5 => (this.RelocationDirectory, this.RelocationDirectorySize),
+                    9 => (this.ThreadDirectory, this.ThreadDirectorySize),
                     12 => (this.AddressTable, this.AddressTableSize),
                     _ => (0, 0)
                 };

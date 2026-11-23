@@ -25,7 +25,7 @@ namespace CommonIR.Generators.Binary.X8664.Translation
 
         public byte[] Translate()
         {
-            X8664Context context = new X8664Context();
+            X8664Context context = new X8664Context { OptimizeLoops = this.Configuration.OptimizeLoops };
 
             X8664RuntimeBuilder runtime = new X8664RuntimeBuilder(this.Module, this.Configuration);
             runtime.Build(context);
@@ -40,15 +40,40 @@ namespace CommonIR.Generators.Binary.X8664.Translation
 
             foreach (IRFunctionImport functionImport in this.Module.FunctionImports)
             {
-                context.Imports[functionImport] = imports.Add(functionImport);
+                if (!runtime.SystemImports.ContainsKey(functionImport) && !context.RuntimeImports.ContainsKey(functionImport))
+                {
+                    context.Imports[functionImport] = imports.Add(functionImport);
+                }
             }
 
             int dataSize = 0;
 
+            int threadDataSize = 0;
+
             foreach (IRGlobal global in this.Module.Globals)
             {
+                if (global.IsThreadLocal)
+                {
+                    context.ThreadLocals[global] = threadDataSize;
+                    threadDataSize += 16;
+                    continue;
+                }
+
                 context.Globals[global] = new X8664Symbol(global.Name ?? "global", X8664Sections.Data, dataSize);
                 dataSize += 16;
+            }
+
+            int threadDirectory = X8664PortableExecutable.AlignUp(dataSize, ThreadDirectoryAlignment);
+
+            if (threadDataSize > 0)
+            {
+                context.ThreadIndex = new X8664Symbol("__tls_index", X8664Sections.Data, threadDirectory + ThreadIndexOffset);
+                dataSize = threadDirectory + ThreadTemplateOffset + threadDataSize;
+            }
+
+            foreach ((IRFunctionImport functionImport, IRGlobal slot) in runtime.SystemImports)
+            {
+                context.Imports[functionImport] = context.Globals[slot];
             }
 
             imports.Layout(dataSize);
@@ -100,6 +125,7 @@ namespace CommonIR.Generators.Binary.X8664.Translation
             }
 
             X8664Symbol exceptionDirectory = context.AddReadOnly("pdata", exceptionTable.ToArray(), 4);
+            X8664Symbol? relocations = threadDataSize > 0 ? context.AddReadOnly("reloc", new byte[RelocationBlockSize], 4) : null;
 
             int readOnlySize = context.ReadOnlyData.Count;
             int dataAddress = X8664PortableExecutable.DataAddress(textSize, readOnlySize);
@@ -130,6 +156,12 @@ namespace CommonIR.Generators.Binary.X8664.Translation
             byte[] data = new byte[imports.Offset + imports.Size];
             imports.Serialize(dataAddress).CopyTo(data, imports.Offset);
 
+            if (relocations != null)
+            {
+                WriteThreadDirectory(data, threadDirectory, dataAddress, threadDataSize);
+                WriteThreadRelocations(context.ReadOnlyData, relocations.Offset, dataAddress + threadDirectory);
+            }
+
             X8664PortableExecutable executable = new X8664PortableExecutable
             {
                 Text = context.Assembler.Code.ToArray(),
@@ -142,11 +174,51 @@ namespace CommonIR.Generators.Binary.X8664.Translation
                 AddressTableSize = imports.AddressTableSize,
                 ExceptionDirectory = readOnlyAddress + exceptionDirectory.Offset,
                 ExceptionDirectorySize = exceptionTable.Count,
+                ThreadDirectory = relocations == null ? 0 : dataAddress + threadDirectory,
+                ThreadDirectorySize = relocations == null ? 0 : ThreadDirectorySize,
+                RelocationDirectory = relocations == null ? 0 : readOnlyAddress + relocations.Offset,
+                RelocationDirectorySize = relocations == null ? 0 : RelocationBlockSize,
                 Subsystem = this.Configuration.Subsystem,
                 StackReserve = this.Configuration.StackReserve,
             };
 
             return executable.Serialize();
+        }
+
+        const int ThreadDirectoryAlignment = 64;
+        const int ThreadDirectorySize = 40;
+        const int ThreadIndexOffset = 40;
+        const int ThreadCallbacksOffset = 48;
+        const int ThreadTemplateOffset = 64;
+        const int ThreadAddressCount = 4;
+        const int RelocationBlockSize = 8 + ThreadAddressCount * 2;
+        const int RelocationDir64 = 10;
+
+        static void WriteThreadDirectory(byte[] data, int directory, int dataAddress, int threadDataSize)
+        {
+            long Address(int offset) => X8664PortableExecutable.ImageBase + dataAddress + directory + offset;
+
+            long[] addresses = [Address(ThreadTemplateOffset), Address(ThreadTemplateOffset + threadDataSize), Address(ThreadIndexOffset), Address(ThreadCallbacksOffset)];
+
+            for (int i = 0; i < addresses.Length; i++)
+            {
+                BitConverter.GetBytes(addresses[i]).CopyTo(data, directory + i * 8);
+            }
+        }
+
+        static void WriteThreadRelocations(List<byte> readOnlyData, int offset, int directoryAddress)
+        {
+            List<byte> block = [.. BitConverter.GetBytes(directoryAddress & ~0xFFF), .. BitConverter.GetBytes(RelocationBlockSize)];
+
+            for (int i = 0; i < ThreadAddressCount; i++)
+            {
+                block.AddRange(BitConverter.GetBytes((ushort)((RelocationDir64 << 12) | ((directoryAddress + i * 8) & 0xFFF))));
+            }
+
+            for (int i = 0; i < block.Count; i++)
+            {
+                readOnlyData[offset + i] = block[i];
+            }
         }
     }
 }
